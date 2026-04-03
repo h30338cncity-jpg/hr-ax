@@ -1,930 +1,1527 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>온톨로지 맵 시스템</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>온톨로지 맵 서비스</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel (JSX 컴파일러) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Lucide Icons (Vanilla JS) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
   <style>
-    :root {
-      --bg: #f8fafc;
-      --panel: #ffffff;
-      --line: #e2e8f0;
-      --text: #0f172a;
-      --muted: #64748b;
-      --blue: #2563eb;
-      --blue2: #0ea5e9;
-      --indigo: #6366f1;
-      --danger: #ef4444;
-      --ok: #10b981;
-      --warn: #f59e0b;
-      --nav: #0f172a;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-    }
-    button, input, select, textarea { font: inherit; }
-    .hidden { display: none !important; }
-    .app { display: flex; min-height: 100vh; }
-    .sidebar {
-      width: 250px;
-      background: var(--nav);
-      color: #cbd5e1;
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid #1e293b;
-    }
-    .brand {
-      padding: 18px 20px;
-      font-weight: 700;
-      font-size: 20px;
-      color: #fff;
-      border-bottom: 1px solid #1e293b;
-    }
-    .nav { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
-    .nav button {
-      border: 0; background: transparent; color: #cbd5e1; text-align: left;
-      padding: 12px 14px; border-radius: 10px; cursor: pointer; font-weight: 700;
-    }
-    .nav button.active { background: var(--blue); color: #fff; }
-    .nav button:hover { background: #1e293b; }
-    .userbox { margin-top: auto; padding: 16px; border-top: 1px solid #1e293b; }
-    .userbox .name { font-weight: 700; color: #fff; }
-    .userbox .role { color: #93c5fd; font-size: 12px; margin-top: 4px; }
-    .user-actions { display: flex; gap: 8px; margin-top: 12px; }
-    .user-actions button {
-      flex: 1; border: 0; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-weight: 700;
-    }
-    .btn-gray { background: #1e293b; color: #e2e8f0; }
-    .btn-red { background: #3f1517; color: #fecaca; }
-
-    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-    .topbar {
-      height: 62px; background: #fff; border-bottom: 1px solid var(--line); display: flex;
-      align-items: center; justify-content: space-between; padding: 0 24px;
-    }
-    .topbar h1 { font-size: 20px; margin: 0; }
-    .search {
-      width: 280px; border: 1px solid var(--line); background: #f8fafc; padding: 10px 12px; border-radius: 999px;
-    }
-    .content { flex: 1; padding: 20px; overflow: auto; }
-    .page.hidden { display: none; }
-
-    .card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: 0 4px 18px rgba(15,23,42,.04); }
-    .grid { display: grid; gap: 18px; }
-    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .metric { font-size: 36px; font-weight: 800; margin-top: 8px; }
-    .muted { color: var(--muted); }
-    .section-title { font-size: 20px; font-weight: 800; margin: 0 0 16px; }
-
-    .toolbar {
-      display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-      padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--line);
-    }
-    .toolbar-group { display: flex; gap: 8px; flex-wrap: wrap; }
-    .toolbar button {
-      border: 1px solid var(--line); background: #fff; color: var(--text); padding: 10px 14px;
-      border-radius: 10px; cursor: pointer; font-weight: 700;
-    }
-    .toolbar button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
-    .toolbar button.dark { background: var(--text); color: #fff; border-color: var(--text); }
-    .toolbar button.warn { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
-    .toolbar button.danger { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
-    .workspace {
-      display: grid; grid-template-columns: minmax(0,1fr) 380px; min-height: calc(100vh - 146px);
-      background: #fff; border: 1px solid var(--line); border-radius: 18px; overflow: hidden;
-    }
-    .canvas-wrap { position: relative; background: #f8fafc; }
-    #mapSvg { width: 100%; height: 100%; min-height: 620px; display: block; cursor: crosshair; }
-    .panel { border-left: 1px solid var(--line); background: #fff; overflow: auto; }
-    .panel-inner { padding: 20px; }
-    .panel h3 { margin: 0 0 14px; font-size: 22px; }
-    .field { margin-bottom: 14px; }
-    .field label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
-    .field input, .field select, .field textarea {
-      width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; background: #fff;
-    }
-    .field textarea { min-height: 90px; resize: vertical; }
-    .pill {
-      display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
-    }
-    .pill.blue { background: #dbeafe; color: #1d4ed8; }
-    .pill.green { background: #dcfce7; color: #166534; }
-    .pill.red { background: #fee2e2; color: #991b1b; }
-    .pill.gray { background: #e2e8f0; color: #334155; }
-    .connected-item { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #fff; }
-
-    .login-screen, .modal-backdrop {
-      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-      background: rgba(15,23,42,.45); backdrop-filter: blur(3px); z-index: 1000;
-    }
-    .login-card, .modal {
-      width: min(420px, calc(100vw - 32px)); background: #fff; border-radius: 22px; padding: 28px;
-      box-shadow: 0 20px 60px rgba(15,23,42,.25);
-    }
-    .login-card h2, .modal h2 { margin: 0 0 8px; font-size: 28px; }
-    .login-card p, .modal p { color: var(--muted); }
-    .full-btn {
-      width: 100%; border: 0; background: var(--blue); color: #fff; border-radius: 10px; padding: 12px;
-      font-weight: 800; cursor: pointer;
-    }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-
-    .toast {
-      position: fixed; right: 18px; bottom: 18px; background: #16a34a; color: #fff; padding: 12px 16px;
-      border-radius: 12px; box-shadow: 0 14px 30px rgba(0,0,0,.18); z-index: 2000; font-weight: 700;
-    }
-    .toast.error { background: #dc2626; }
-
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; }
-    th { background: #f8fafc; font-size: 13px; color: var(--muted); }
-    .small { font-size: 12px; }
-    .empty-state {
-      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;
-      color: var(--muted); font-weight: 700;
-    }
-
-    @media (max-width: 1100px) {
-      .workspace { grid-template-columns: 1fr; }
-      .panel { border-left: 0; border-top: 1px solid var(--line); }
-      .grid-3 { grid-template-columns: 1fr; }
-      .grid-2 { grid-template-columns: 1fr; }
-      .sidebar { width: 210px; }
-    }
+    /* SVG 아이콘이 부모 Wrapper(Span) 크기에 맞게 조절되도록 강제 설정 */
+    .lucide { width: 100%; height: 100%; stroke: currentColor; }
   </style>
 </head>
-<body>
-  <div id="loginScreen" class="login-screen">
-    <div class="login-card">
-      <h2>온톨로지 맵 시스템</h2>
-      <p>관리자가 발급한 사번과 비밀번호로 로그인하세요.</p>
-      <div class="field">
-        <label>ID (사번)</label>
-        <input id="loginId" type="text" placeholder="사번 입력" />
-      </div>
-      <div class="field">
-        <label>비밀번호</label>
-        <input id="loginPw" type="password" placeholder="비밀번호 입력" />
-      </div>
-      <button id="loginBtn" class="full-btn">로그인</button>
-      <p class="small" style="margin-top:16px;background:#f8fafc;padding:12px;border-radius:10px;">
-        * 기본 관리자 계정: admin / admin<br>
-        * 최초 계정은 사번과 동일한 비밀번호로 생성 가능합니다.
-      </p>
-    </div>
-  </div>
+<body class="bg-slate-50">
+  <div id="root"></div>
 
-  <div id="pwModal" class="modal-backdrop hidden">
-    <div class="modal">
-      <h2>비밀번호 변경</h2>
-      <p>보안을 위해 새 비밀번호를 설정해 주세요.</p>
-      <div id="currentPwField" class="field hidden">
-        <label>현재 비밀번호</label>
-        <input id="currentPw" type="password" />
-      </div>
-      <div class="field">
-        <label>새 비밀번호</label>
-        <input id="newPw" type="password" />
-      </div>
-      <div class="field">
-        <label>새 비밀번호 확인</label>
-        <input id="confirmPw" type="password" />
-      </div>
-      <div id="pwError" class="small" style="color:#dc2626;font-weight:700;"></div>
-      <div class="modal-actions">
-        <button id="cancelPwBtn" class="btn-gray hidden">취소</button>
-        <button id="savePwBtn" class="full-btn" style="width:auto;padding:12px 18px;">저장</button>
-      </div>
-    </div>
-  </div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
 
-  <div id="nodeModal" class="modal-backdrop hidden">
-    <div class="modal" style="width:min(560px, calc(100vw - 32px));">
-      <h2>새로운 객체 추가</h2>
-      <p>생성할 객체 유형을 선택하세요.</p>
-      <div class="grid grid-2" id="nodeTypeButtons"></div>
-      <div class="modal-actions">
-        <button id="closeNodeModal" class="btn-gray">닫기</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="userModal" class="modal-backdrop hidden">
-    <div class="modal">
-      <h2 id="userModalTitle">신규 계정 추가</h2>
-      <div class="field"><label>ID (사번)</label><input id="userId" type="text"></div>
-      <div class="field"><label>이름</label><input id="userName" type="text"></div>
-      <div class="field"><label>소속 부서</label><input id="userDept" type="text"></div>
-      <div class="field"><label>권한</label>
-        <select id="userRole">
-          <option value="System Admin">System Admin</option>
-          <option value="Editor">Editor</option>
-          <option value="Viewer">Viewer</option>
-        </select>
-      </div>
-      <div class="field">
-        <label><input id="userNeedPwChange" type="checkbox"> 비밀번호 초기화 후 강제 변경</label>
-      </div>
-      <div class="modal-actions">
-        <button id="cancelUserBtn" class="btn-gray">취소</button>
-        <button id="saveUserBtn" class="full-btn" style="width:auto;padding:12px 18px;">저장</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="app hidden" id="app">
-    <aside class="sidebar">
-      <div class="brand">Ontology Map</div>
-      <div class="nav">
-        <button id="navDashboard" class="active">대시보드</button>
-        <button id="navMap">온톨로지 맵 뷰어</button>
-        <button id="navAdmin" class="hidden">계정/권한 관리</button>
-      </div>
-      <div class="userbox">
-        <div class="name" id="sidebarUserName"></div>
-        <div class="role" id="sidebarUserRole"></div>
-        <div class="user-actions">
-          <button class="btn-gray" id="changePwBtn">비밀번호</button>
-          <button class="btn-red" id="logoutBtn">로그아웃</button>
-        </div>
-      </div>
-    </aside>
-
-    <main class="main">
-      <div class="topbar">
-        <h1 id="pageTitle">과제 및 품질 대시보드</h1>
-        <input id="mapSearch" class="search hidden" type="text" placeholder="노드명 검색" />
-      </div>
-      <div class="content">
-        <section id="dashboardPage" class="page">
-          <div class="grid grid-2" style="margin-bottom:20px;">
-            <div class="card" style="background:linear-gradient(135deg,#2563eb,#4338ca);color:#fff;">
-              <div>내가 담당하는 객체</div>
-              <div class="metric" id="myNodeCount">0</div>
-            </div>
-            <div class="card">
-              <div class="muted">내 객체와 연결된 관계 수</div>
-              <div class="metric" style="color:#4338ca;" id="myEdgeCount">0</div>
-            </div>
-          </div>
-          <h2 class="section-title">전체 온톨로지 품질 모니터링</h2>
-          <div class="grid grid-3">
-            <div class="card"><div class="muted">전체 등록 노드</div><div class="metric" id="totalNodes">0</div></div>
-            <div class="card"><div class="muted">전체 연결 엣지</div><div class="metric" id="totalEdges">0</div></div>
-            <div class="card" style="background:#fef2f2;border-color:#fecaca;"><div class="muted" style="color:#b91c1c;">고립된 객체</div><div class="metric" style="color:#b91c1c;" id="isolatedNodes">0</div></div>
-          </div>
-        </section>
-
-        <section id="mapPage" class="page hidden">
-          <div class="toolbar">
-            <div class="toolbar-group">
-              <button id="undoBtn">실행취소</button>
-              <button id="redoBtn">다시실행</button>
-              <button id="addNodeBtn" class="primary">노드 추가</button>
-              <button id="connectBtn" class="warn">선 연결</button>
-              <button id="deleteBtn" class="danger">삭제</button>
-            </div>
-            <div class="toolbar-group">
-              <button id="saveMapBtn" class="dark">맵 저장</button>
-            </div>
-          </div>
-          <div class="workspace">
-            <div class="canvas-wrap">
-              <svg id="mapSvg" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid meet">
-                <defs>
-                  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                    <circle cx="2" cy="2" r="1" fill="#cbd5e1"></circle>
-                  </pattern>
-                  <marker id="arrowGreen" viewBox="0 0 10 10" refX="18" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#10b981"></path>
-                  </marker>
-                  <marker id="arrowRed" viewBox="0 0 10 10" refX="18" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444"></path>
-                  </marker>
-                  <marker id="arrowBlue" viewBox="0 0 10 10" refX="18" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"></path>
-                  </marker>
-                </defs>
-                <rect id="bgRect" x="0" y="0" width="1200" height="700" fill="url(#grid)"></rect>
-                <g id="edgesLayer"></g>
-                <g id="nodesLayer"></g>
-              </svg>
-              <div class="empty-state" id="emptyState">캔버스가 비어 있습니다. 상단의 '노드 추가'를 눌러 시작하세요.</div>
-            </div>
-            <aside class="panel">
-              <div class="panel-inner" id="detailPanel">
-                <div class="muted">노드나 선을 클릭하면 상세 편집 패널이 열립니다.</div>
-              </div>
-            </aside>
-          </div>
-        </section>
-
-        <section id="adminPage" class="page hidden">
-          <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;">
-              <h2 class="section-title" style="margin:0;">사용자 계정 및 권한 관리</h2>
-              <button id="openUserModalBtn" class="full-btn" style="width:auto;padding:12px 18px;">신규 계정 추가</button>
-            </div>
-            <div style="overflow:auto;">
-              <table>
-                <thead>
-                  <tr><th>ID</th><th>이름</th><th>부서</th><th>권한</th><th>상태</th><th>관리</th></tr>
-                </thead>
-                <tbody id="usersTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-      </div>
-    </main>
-  </div>
-
-  <div id="toast" class="toast hidden"></div>
-
-  <script>
-    const typeColors = {
-      Task: '#2563eb', Data: '#0ea5e9', System: '#6366f1',
-      Law: '#1e3a8a', Regulation: '#0284c7', Guideline: '#38bdf8', Deliverable: '#93c5fd'
+    // --- Lucide 아이콘 React Wrapper (HTML 단일 파일용) ---
+    const IconWrapper = ({ name, size = 24, className = "" }) => {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (ref.current) {
+          ref.current.innerHTML = `<i data-lucide="${name}"></i>`;
+          lucide.createIcons({ root: ref.current });
+        }
+      }, [name]);
+      return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} style={{ width: size, height: size, color: 'inherit' }}></span>;
     };
-    const typeLabels = {
-      Task: '과제', Data: '데이터', System: '시스템', Law: '국가법령',
-      Regulation: '사내규정', Guideline: '지침', Deliverable: '산출물'
-    };
+
+    // 사용된 모든 아이콘 매핑
+    const Network = (p) => <IconWrapper name="network" {...p} />;
+    const LayoutDashboard = (p) => <IconWrapper name="layout-dashboard" {...p} />;
+    const Settings = (p) => <IconWrapper name="settings" {...p} />;
+    const LogOut = (p) => <IconWrapper name="log-out" {...p} />;
+    const Search = (p) => <IconWrapper name="search" {...p} />;
+    const Plus = (p) => <IconWrapper name="plus" {...p} />;
+    const AlertCircle = (p) => <IconWrapper name="alert-circle" {...p} />;
+    const FileText = (p) => <IconWrapper name="file-text" {...p} />;
+    const Download = (p) => <IconWrapper name="download" {...p} />;
+    const CheckCircle = (p) => <IconWrapper name="check-circle" {...p} />;
+    const ShieldAlert = (p) => <IconWrapper name="shield-alert" {...p} />;
+    const Lock = (p) => <IconWrapper name="lock" {...p} />;
+    const User = (p) => <IconWrapper name="user" {...p} />;
+    const Users = (p) => <IconWrapper name="users" {...p} />;
+    const X = (p) => <IconWrapper name="x" {...p} />;
+    const Save = (p) => <IconWrapper name="save" {...p} />;
+    const Briefcase = (p) => <IconWrapper name="briefcase" {...p} />;
+    const Database = (p) => <IconWrapper name="database" {...p} />;
+    const LinkIcon = (p) => <IconWrapper name="link" {...p} />;
+    const Trash2 = (p) => <IconWrapper name="trash-2" {...p} />;
+    const Edit3 = (p) => <IconWrapper name="edit-3" {...p} />;
+    const Type = (p) => <IconWrapper name="type" {...p} />;
+    const Undo2 = (p) => <IconWrapper name="undo-2" {...p} />;
+    const Redo2 = (p) => <IconWrapper name="redo-2" {...p} />;
+    const Zap = (p) => <IconWrapper name="zap" {...p} />;
+    const BrainCircuit = (p) => <IconWrapper name="brain-circuit" {...p} />;
+    const KeySquare = (p) => <IconWrapper name="key-square" {...p} />;
+    const Activity = (p) => <IconWrapper name="activity" {...p} />;
+    const ChevronRight = (p) => <IconWrapper name="chevron-right" {...p} />;
+    const ChevronLeft = (p) => <IconWrapper name="chevron-left" {...p} />;
+    const Monitor = (p) => <IconWrapper name="monitor" {...p} />;
+    const BookOpen = (p) => <IconWrapper name="book-open" {...p} />;
+    const Scale = (p) => <IconWrapper name="scale" {...p} />;
+    const ClipboardCheck = (p) => <IconWrapper name="clipboard-check" {...p} />;
+    const ShieldCheck = (p) => <IconWrapper name="shield-check" {...p} />;
+    const ArrowLeftRight = (p) => <IconWrapper name="arrow-left-right" {...p} />;
+    const ExternalLink = (p) => <IconWrapper name="external-link" {...p} />;
+    const Paperclip = (p) => <IconWrapper name="paperclip" {...p} />;
+    const PlusCircle = (p) => <IconWrapper name="plus-circle" {...p} />;
+
+    // --- [Default Meta Attributes based on Schema] ---
     const defaultMeta = {
       Task: { 상태: '미진행', 목적: '', 담당자: '', 시작일: '', 종료일: '' },
-      Data: { 상태: '미진행', 데이터셋명: '', 데이터형태: '', 갱신주기: '', 접근권한: '' },
-      System: { 상태: '미진행', 시스템명: '', URL: '', 운영부서: '', 데이터셋명: '', 데이터형태: '', 접근권한: '' },
-      Law: { 상태: '미진행', 국가법령명: '', 시행일: '', 소관부처: '', 조항: '', 원문링크: '' },
-      Regulation: { 상태: '미진행', 사내규정명: '', 시행일: '', 주관부서: '', 조항: '', 원문링크: '' },
-      Guideline: { 상태: '미진행', 매뉴얼명: '', 버전: '', 작성자: '', 원문파일: '' },
-      Deliverable: { 상태: '미진행', 산출물명: '', 확장자: '', 생성일: '', 승인자: '' }
+      Data: { 상태: '미진행', 담당자: '', 데이터셋명: '', 데이터형태: '', 갱신주기: '', 접근권한: '' }, 
+      System: { 상태: '미진행', 담당자: '', 시스템명: '', URL: '', 운영부서: '', 데이터셋명: '', 데이터형태: '', 접근권한: '' }, 
+      Law: { 상태: '미진행', 담당자: '', 국가법령명: '', 시행일: '', 소관부처: '', 조항: '', 원문링크: '' },
+      Regulation: { 상태: '미진행', 담당자: '', 사내규정명: '', 시행일: '', 주관부서: '', 조항: '', 원문링크: '' },
+      Guideline: { 상태: '미진행', 담당자: '', 매뉴얼명: '', 버전: '', 작성자: '', 원문파일: '' },
+      Deliverable: { 상태: '미진행', 담당자: '', 산출물명: '', 확장자: '', 생성일: '', 승인자: '' }
     };
+
+    const typeColors = {
+      Task: '#2563eb',       
+      Data: '#0ea5e9',       
+      System: '#6366f1',     
+      Law: '#1e3a8a',        
+      Regulation: '#0284c7', 
+      Guideline: '#38bdf8',  
+      Deliverable: '#93c5fd' 
+    };
+
+    const typeLabels = {
+      Task: '과제', Data: '데이터', System: '시스템', 
+      Law: '국가법령', Regulation: '사내규정', Guideline: '지침', Deliverable: '산출물'
+    };
+
     const methodNames = {
-      manual: '수동 연결', semantic: '시맨틱 추론', keyword: '키워드 매칭', cooccurrence: '문서 동시 출현',
-      rule: '사전 룰 엔진', inheritance: '상위 속성 상속', transitive: '연쇄 추론', log: '시스템 로그 분석'
+      manual: '수동 연결 (No Rule)',
+      semantic: '시맨틱 추론 (AI)',
+      keyword: '키워드 매칭',
+      cooccurrence: '문서 동시 출현',
+      rule: '사전 룰 엔진 매핑',
+      inheritance: '상위 속성 상속',
+      transitive: '네트워크 연쇄 추론',
+      log: '시스템 로그 분석'
     };
+
+    const methodDescriptions = {
+      manual: '규칙 없이 사용자가 직접 연결하는 방식입니다.',
+      semantic: 'AI가 양측 객체 문서의 문맥과 의미를 분석하여 연결하는 방식입니다.',
+      keyword: '양측 객체 속성에서 공통 키워드가 발견될 때 연결하는 방식입니다.',
+      cooccurrence: '문서 내에서 두 객체가 함께 언급되는 빈도를 기반으로 연결합니다.',
+      rule: '명문화된 IF-THEN 로직에 의해 시스템이 강제로 매핑하는 방식입니다.',
+      inheritance: '상위 객체가 가진 관계나 속성을 하위 객체가 물려받아 연결됩니다.',
+      transitive: 'A-B, B-C의 관계를 통해 A-C의 간접 관계를 논리적으로 도출합니다.',
+      log: '구성원들의 시스템 사용 로그를 기반으로 실질적 연관성을 도출합니다.'
+    };
+
+    const logicPlaceholders = {
+      semantic: '예) 벡터 유사도 > 0.85 이상 시 자동 연결',
+      keyword: '예) [적용대상직무] 필드와 [관련직무] 필드 텍스트 100% 일치',
+      cooccurrence: '예) 공지사항 문서에서 동시 출현 빈도 5회 이상',
+      rule: '예) IF (과제.상태 == "진행중") THEN (자동 매핑)',
+      inheritance: '예) 상위 과제가 준수하는 법령을 산출물도 자동 상속',
+      transitive: '예) A-B 연결 AND B-C 연결 => A-C 논리적 도출',
+      log: '예) 최근 30일 내 API 트래픽이 100건 이상인 경우 도출'
+    };
+
+    const methodIcons = {
+      manual: <Edit3 size={16} className="text-slate-600 mr-2" />,
+      semantic: <BrainCircuit size={16} className="text-purple-600 mr-2" />,
+      keyword: <KeySquare size={16} className="text-blue-600 mr-2" />,
+      cooccurrence: <FileText size={16} className="text-indigo-600 mr-2" />,
+      rule: <Zap size={16} className="text-emerald-600 mr-2" />,
+      inheritance: <Network size={16} className="text-orange-600 mr-2" />,
+      transitive: <LinkIcon size={16} className="text-teal-600 mr-2" />,
+      log: <Activity size={16} className="text-cyan-600 mr-2" />
+    };
+
     const dataTypeGuides = {
-      '관계형DB (RDB)': '정형화된 테이블 구조의 데이터베이스',
-      'NoSQL': '유연한 스키마를 가진 비정형 데이터베이스',
+      '관계형DB (RDB)': '정형화된 테이블 구조의 데이터베이스 (예: MySQL, Oracle)',
+      'NoSQL': '유연한 스키마를 가진 비정형 데이터베이스 (예: MongoDB)',
       '엑셀/CSV': '스프레드시트 형태의 파일형 데이터',
-      'JSON/XML': '웹 API 통신 등에 사용되는 텍스트 기반 포맷',
-      'REST API': '외부 시스템 호출형 인터페이스',
+      'JSON/XML': '웹 API 통신 등에 사용되는 텍스트 기반 구조화 포맷',
+      'REST API': '외부 시스템에서 실시간으로 호출해오는 데이터 인터페이스',
       '문서 (PDF/Word)': '텍스트 위주의 비정형 산출물 문서'
     };
-    const defaultUsers = [
-      { id:'admin', pw:'admin', name:'최고 관리자', role:'System Admin', dept:'인사/조직문화팀', needPwChange:false },
-      { id:'user1', pw:'user1', name:'김HR', role:'Editor', dept:'HRD팀', needPwChange:false },
-      { id:'user2', pw:'user2', name:'이IT', role:'Editor', dept:'IT지원팀', needPwChange:false }
+
+    const defaultMockUsers = [
+      { id: 'admin', pw: 'admin', name: '최고 관리자', role: 'System Admin', dept: '인사/조직문화팀', needPwChange: false },
+      { id: 'user1', pw: 'user1', name: '김HR', role: 'Editor', dept: 'HRD팀', needPwChange: false },
+      { id: 'user2', pw: 'user2', name: '이IT', role: 'Editor', dept: 'IT지원팀', needPwChange: false }
     ];
 
-    const state = {
-      currentUser: null,
-      currentView: 'dashboard',
-      users: loadUsers(),
-      nodes: loadMap().nodes,
-      edges: loadMap().edges,
-      selectedId: null,
-      selectionType: null,
-      connectMode: false,
-      connectSource: null,
-      drag: null,
-      historyPast: [],
-      historyFuture: [],
-      pwModalMode: 'forced',
-      editingUserOriginalId: null,
-      mapSearch: ''
+    // --- [Components] ---
+    const Toast = ({ message, type, onClose }) => {
+      useEffect(() => {
+        const timer = setTimeout(onClose, 3000);
+        return () => clearTimeout(timer);
+      }, [onClose]);
+      const bgColor = type === 'error' ? 'bg-red-500' : 'bg-green-500';
+      return (
+        <div className={`fixed bottom-4 right-4 text-white px-4 py-3 rounded shadow-lg flex items-center space-x-2 animate-bounce ${bgColor} z-50`}>
+          {type === 'error' ? <ShieldAlert size={20} /> : <CheckCircle size={20} />}
+          <span>{message}</span>
+        </div>
+      );
     };
 
-    function loadUsers() {
-      try { return JSON.parse(localStorage.getItem('ontologyUsersDB')) || defaultUsers; }
-      catch { return defaultUsers; }
-    }
-    function saveUsers() { localStorage.setItem('ontologyUsersDB', JSON.stringify(state.users)); }
-    function loadMap() {
-      try {
-        const parsed = JSON.parse(localStorage.getItem('ontologyMapDB')) || {};
-        return { nodes: parsed.nodes || [], edges: parsed.edges || [] };
-      } catch { return { nodes: [], edges: [] }; }
-    }
-    function saveMap(showMsg = false) {
-      localStorage.setItem('ontologyMapDB', JSON.stringify({ nodes: state.nodes, edges: state.edges }));
-      if (showMsg) toast('맵 구조가 저장되었습니다.');
-    }
-    function toast(msg, type='success') {
-      const el = document.getElementById('toast');
-      el.textContent = msg;
-      el.className = 'toast' + (type === 'error' ? ' error' : '');
-      el.classList.remove('hidden');
-      clearTimeout(el._timer);
-      el._timer = setTimeout(() => el.classList.add('hidden'), 2800);
-    }
-    function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
-    function pushHistory() {
-      state.historyPast.push({ nodes: clone(state.nodes), edges: clone(state.edges) });
-      state.historyFuture = [];
-    }
-    function undo() {
-      if (!state.historyPast.length) return;
-      state.historyFuture.unshift({ nodes: clone(state.nodes), edges: clone(state.edges) });
-      const prev = state.historyPast.pop();
-      state.nodes = prev.nodes; state.edges = prev.edges;
-      saveMap(); renderAll();
-    }
-    function redo() {
-      if (!state.historyFuture.length) return;
-      state.historyPast.push({ nodes: clone(state.nodes), edges: clone(state.edges) });
-      const next = state.historyFuture.shift();
-      state.nodes = next.nodes; state.edges = next.edges;
-      saveMap(); renderAll();
-    }
+    const DataFormatInput = ({ val, nodeId, updateNodeMeta }) => {
+      const isCustom = val && !Object.keys(dataTypeGuides).includes(val);
+      const [mode, setMode] = useState(isCustom ? 'custom' : 'select');
 
-    function setView(view) {
-      state.currentView = view;
-      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-      document.getElementById(view + 'Page').classList.remove('hidden');
-      document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-      document.getElementById('nav' + capitalize(view)).classList.add('active');
-      document.getElementById('mapSearch').classList.toggle('hidden', view !== 'map');
-      const titles = {
-        dashboard: '과제 및 품질 대시보드',
-        map: '온톨로지 맵 탐색기',
-        admin: '시스템 관리자 전용 대시보드'
-      };
-      document.getElementById('pageTitle').textContent = titles[view];
-      if (view === 'admin') renderUsers();
-      if (view === 'dashboard') renderDashboard();
-      if (view === 'map') renderMap();
-    }
-    function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
-
-    function login() {
-      const id = document.getElementById('loginId').value.trim();
-      const pw = document.getElementById('loginPw').value;
-      const user = state.users.find(u => u.id === id && u.pw === pw);
-      if (!user) return toast('ID 또는 비밀번호가 일치하지 않습니다.', 'error');
-      state.currentUser = user;
-      document.getElementById('loginScreen').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
-      document.getElementById('sidebarUserName').textContent = user.name;
-      document.getElementById('sidebarUserRole').textContent = user.role;
-      document.getElementById('navAdmin').classList.toggle('hidden', user.role !== 'System Admin');
-      if (user.needPwChange) openPwModal('forced');
-      setView('dashboard');
-      renderAll();
-      toast(user.name + '님 환영합니다.');
-    }
-    function logout() {
-      state.currentUser = null;
-      document.getElementById('app').classList.add('hidden');
-      document.getElementById('loginScreen').classList.remove('hidden');
-      toast('로그아웃 되었습니다.');
-    }
-
-    function openPwModal(mode) {
-      state.pwModalMode = mode;
-      document.getElementById('pwModal').classList.remove('hidden');
-      document.getElementById('currentPwField').classList.toggle('hidden', mode !== 'optional');
-      document.getElementById('cancelPwBtn').classList.toggle('hidden', mode !== 'optional');
-      document.getElementById('pwError').textContent = '';
-      document.getElementById('currentPw').value = '';
-      document.getElementById('newPw').value = '';
-      document.getElementById('confirmPw').value = '';
-    }
-    function closePwModal() {
-      if (state.pwModalMode === 'forced') return;
-      document.getElementById('pwModal').classList.add('hidden');
-    }
-    function savePassword() {
-      const curr = document.getElementById('currentPw').value;
-      const next = document.getElementById('newPw').value;
-      const conf = document.getElementById('confirmPw').value;
-      const err = document.getElementById('pwError');
-      err.textContent = '';
-      if (state.pwModalMode === 'optional' && curr !== state.currentUser.pw) {
-        err.textContent = '현재 비밀번호가 일치하지 않습니다.'; return;
-      }
-      if (next.length < 4) { err.textContent = '새 비밀번호는 4자리 이상이어야 합니다.'; return; }
-      if (next !== conf) { err.textContent = '새 비밀번호와 확인이 일치하지 않습니다.'; return; }
-      const user = state.users.find(u => u.id === state.currentUser.id);
-      user.pw = next; user.needPwChange = false;
-      state.currentUser = user;
-      saveUsers();
-      document.getElementById('pwModal').classList.add('hidden');
-      toast('비밀번호가 변경되었습니다.');
-    }
-
-    function renderDashboard() {
-      if (!state.currentUser) return;
-      const myNodes = state.nodes.filter(n => (n.meta.담당자 || '').includes(state.currentUser.name) || (n.meta.접근권한 || '').includes(state.currentUser.name));
-      const myNodeIds = new Set(myNodes.map(n => n.id));
-      const myEdges = state.edges.filter(e => myNodeIds.has(e.source) || myNodeIds.has(e.target));
-      document.getElementById('myNodeCount').textContent = myNodes.length;
-      document.getElementById('myEdgeCount').textContent = myEdges.length;
-      document.getElementById('totalNodes').textContent = state.nodes.length;
-      document.getElementById('totalEdges').textContent = state.edges.length;
-      const isolated = state.nodes.filter(n => !state.edges.some(e => e.source === n.id || e.target === n.id)).length;
-      document.getElementById('isolatedNodes').textContent = isolated;
-    }
-
-    function nextNodeLabel(type) {
-      return {
-        Task: '새로운 과제', Data: '새로운 데이터', System: '새로운 시스템',
-        Law: '새로운 국가법령', Regulation: '새로운 사내규정', Guideline: '새로운 지침', Deliverable: '새로운 산출물'
-      }[type];
-    }
-
-    function addNode(type) {
-      pushHistory();
-      const node = {
-        id: 'n_' + Date.now(),
-        type,
-        label: nextNodeLabel(type),
-        x: 220 + Math.random()*500,
-        y: 140 + Math.random()*320,
-        color: typeColors[type],
-        meta: clone(defaultMeta[type])
-      };
-      state.nodes.push(node);
-      saveMap();
-      closeNodeModal();
-      state.selectedId = node.id; state.selectionType = 'node';
-      renderAll();
-    }
-
-    function renderNodeModalButtons() {
-      const items = [
-        ['Task','과제'], ['Data','데이터'], ['System','시스템'], ['Law','국가법령'],
-        ['Regulation','사내규정'], ['Guideline','지침'], ['Deliverable','산출물']
-      ];
-      const wrap = document.getElementById('nodeTypeButtons');
-      wrap.innerHTML = '';
-      items.forEach(([type, label]) => {
-        const btn = document.createElement('button');
-        btn.innerHTML = '<b>' + label + '</b><div class="small muted" style="margin-top:4px;">' + type + '</div>';
-        btn.style.border = '1px solid var(--line)';
-        btn.style.borderRadius = '14px';
-        btn.style.padding = '16px';
-        btn.style.cursor = 'pointer';
-        btn.style.background = '#fff';
-        btn.onclick = () => addNode(type);
-        wrap.appendChild(btn);
-      });
-    }
-    function openNodeModal() { document.getElementById('nodeModal').classList.remove('hidden'); }
-    function closeNodeModal() { document.getElementById('nodeModal').classList.add('hidden'); }
-
-    function getNodeById(id) { return state.nodes.find(n => n.id === id); }
-    function getEdgeById(id) { return state.edges.find(e => e.id === id); }
-    function getStatusColor(status) {
-      if (status === '진행중') return '#3b82f6';
-      if (status === '완료') return '#10b981';
-      if (status === '보류') return '#f59e0b';
-      return '#94a3b8';
-    }
-
-    function renderMap() {
-      const nodesLayer = document.getElementById('nodesLayer');
-      const edgesLayer = document.getElementById('edgesLayer');
-      nodesLayer.innerHTML = '';
-      edgesLayer.innerHTML = '';
-      const q = state.mapSearch.trim().toLowerCase();
-      const filteredNodeIds = new Set(state.nodes.filter(n => !q || n.label.toLowerCase().includes(q)).map(n => n.id));
-      const visibleNodes = state.nodes.filter(n => !q || filteredNodeIds.has(n.id));
-      const visibleEdges = state.edges.filter(e => !q || (filteredNodeIds.has(e.source) || filteredNodeIds.has(e.target)));
-
-      visibleEdges.forEach(edge => {
-        const s = getNodeById(edge.source), t = getNodeById(edge.target);
-        if (!s || !t) return;
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        const selected = state.selectedId === edge.id && state.selectionType === 'edge';
-        const hasRule = edge.method !== 'manual' || (edge.logic || '').trim();
-        const color = selected ? '#2563eb' : (hasRule ? '#10b981' : '#ef4444');
-        const marker = selected ? 'url(#arrowBlue)' : (hasRule ? 'url(#arrowGreen)' : 'url(#arrowRed)');
-        const hit = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        hit.setAttribute('x1', s.x); hit.setAttribute('y1', s.y); hit.setAttribute('x2', t.x); hit.setAttribute('y2', t.y);
-        hit.setAttribute('stroke', 'transparent'); hit.setAttribute('stroke-width', '18');
-        hit.style.cursor = 'pointer';
-        hit.onclick = (ev) => { ev.stopPropagation(); state.selectedId = edge.id; state.selectionType = 'edge'; renderAll(); };
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', s.x); line.setAttribute('y1', s.y); line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
-        line.setAttribute('stroke', color); line.setAttribute('stroke-width', selected ? '3' : '2');
-        line.setAttribute('marker-end', marker);
-        const midX = (s.x + t.x) / 2, midY = (s.y + t.y) / 2;
-        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        rect.setAttribute('x', midX - 50); rect.setAttribute('y', midY - 12); rect.setAttribute('width', 100); rect.setAttribute('height', 24);
-        rect.setAttribute('rx', 12); rect.setAttribute('fill', '#fff'); rect.setAttribute('stroke', color);
-        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        txt.setAttribute('x', midX); txt.setAttribute('y', midY + 4); txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('font-size', '10'); txt.setAttribute('font-weight', '700');
-        txt.textContent = edge.method === 'manual' ? (edge.label || '관계 입력') : methodNames[edge.method];
-        g.append(hit, line, rect, txt);
-        edgesLayer.appendChild(g);
-      });
-
-      visibleNodes.forEach(node => {
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
-        g.style.cursor = 'pointer';
-        g.onmousedown = (ev) => startNodeDrag(ev, node.id);
-        g.onclick = (ev) => { ev.stopPropagation(); };
-
-        const selected = state.selectedId === node.id && state.selectionType === 'node';
-        const source = state.connectSource === node.id;
-        const stroke = selected ? '#0f172a' : (source ? '#ef4444' : 'rgba(255,255,255,0.35)');
-        const strokeW = selected || source ? 3 : 1;
-
-        let shape;
-        if (node.type === 'Task') {
-          shape = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          shape.setAttribute('x', -26); shape.setAttribute('y', -26); shape.setAttribute('width', 52); shape.setAttribute('height', 52); shape.setAttribute('rx', 14);
-        } else if (['Law','Regulation','Guideline','Deliverable'].includes(node.type)) {
-          shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          shape.setAttribute('d', 'M-22,-26 L8,-26 L24,-12 L24,26 L-22,26 Z');
-        } else if (node.type === 'System') {
-          shape = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          shape.setAttribute('x', -20); shape.setAttribute('y', -20); shape.setAttribute('width', 40); shape.setAttribute('height', 40); shape.setAttribute('rx', 6); shape.setAttribute('transform', 'rotate(45)');
+      const handleSelect = (e) => {
+        if (e.target.value === 'custom') {
+          setMode('custom');
+          updateNodeMeta(nodeId, '데이터형태', '');
         } else {
-          shape = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-          shape.setAttribute('r', 26);
+          setMode('select');
+          updateNodeMeta(nodeId, '데이터형태', e.target.value);
         }
-        shape.setAttribute('fill', node.color); shape.setAttribute('stroke', stroke); shape.setAttribute('stroke-width', strokeW);
-        shape.onclick = (ev) => nodeClick(ev, node.id);
+      };
 
-        const badge = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        badge.setAttribute('x', 14); badge.setAttribute('y', -36); badge.setAttribute('width', 38); badge.setAttribute('height', 16); badge.setAttribute('rx', 8);
-        badge.setAttribute('fill', getStatusColor(node.meta.상태 || '미진행')); badge.setAttribute('stroke', 'white'); badge.setAttribute('stroke-width', 1.5);
-        const badgeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        badgeText.setAttribute('x', 33); badgeText.setAttribute('y', -25); badgeText.setAttribute('font-size', '9'); badgeText.setAttribute('text-anchor', 'middle'); badgeText.setAttribute('font-weight', '700'); badgeText.setAttribute('fill', '#fff');
-        badgeText.textContent = node.meta.상태 || '미진행';
-        const letter = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        letter.setAttribute('y', 5); letter.setAttribute('text-anchor', 'middle'); letter.setAttribute('font-size', '16'); letter.setAttribute('font-weight', '900'); letter.setAttribute('fill', 'rgba(255,255,255,.95)');
-        letter.textContent = node.type.charAt(0);
-        const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        labelBg.setAttribute('x', -65); labelBg.setAttribute('y', 34); labelBg.setAttribute('width', 130); labelBg.setAttribute('height', 26); labelBg.setAttribute('rx', 6);
-        labelBg.setAttribute('fill', '#fff'); labelBg.setAttribute('stroke', selected ? '#0f172a' : '#e2e8f0');
-        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        label.setAttribute('y', 51); label.setAttribute('text-anchor', 'middle'); label.setAttribute('font-size', '11'); label.setAttribute('font-weight', '700');
-        label.setAttribute('fill', selected ? '#0f172a' : '#475569');
-        label.textContent = node.label;
-        [shape, badge, badgeText, letter, labelBg, label].forEach(el => { el.style.pointerEvents = 'auto'; el.onclick = (ev) => nodeClick(ev, node.id); });
-        g.append(shape, badge, badgeText, letter, labelBg, label);
-        nodesLayer.appendChild(g);
+      return (
+        <div className="space-y-1.5">
+          <select 
+            className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-bold text-slate-700 cursor-pointer transition" 
+            value={mode === 'custom' ? 'custom' : val} 
+            onChange={handleSelect}
+          >
+            <option value="">형태 선택...</option>
+            {Object.keys(dataTypeGuides).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            <option value="custom">직접 입력 (목록에 없음)</option>
+          </select>
+          
+          {mode === 'custom' && (
+             <input 
+               type="text" 
+               className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-medium mt-1" 
+               value={val} onChange={(e) => updateNodeMeta(nodeId, '데이터형태', e.target.value)} 
+               placeholder="원하는 데이터 형태를 직접 입력하세요" 
+             />
+          )}
+          
+          {mode === 'select' && val && dataTypeGuides[val] && (
+            <p className="text-[10px] text-slate-500 font-medium bg-slate-100 p-1.5 rounded">💡 {dataTypeGuides[val]}</p>
+          )}
+        </div>
+      );
+    };
+
+    function TaskOntologyApp() {
+      const [usersDb, setUsersDb] = useState(() => {
+        const saved = localStorage.getItem('ontologyUsersDB');
+        return saved ? JSON.parse(saved) : defaultMockUsers;
       });
-      document.getElementById('emptyState').classList.toggle('hidden', visibleNodes.length > 0);
-    }
+      
+      const [currentUser, setCurrentUser] = useState(null);
+      const [currentView, setCurrentView] = useState('login'); 
+      const [toast, setToast] = useState(null);
+      const [isAnytimePwModalOpen, setIsAnytimePwModalOpen] = useState(false);
 
-    function nodeClick(ev, id) {
-      ev.stopPropagation();
-      if (state.connectMode) {
-        if (!state.connectSource) {
-          state.connectSource = id;
-          toast('대상 노드를 클릭하면 선이 연결됩니다.');
-        } else {
-          if (state.connectSource !== id) {
-            pushHistory();
-            state.edges.push({ id:'e_' + Date.now(), source: state.connectSource, target: id, label:'', method:'manual', logic:'' });
-            saveMap();
-            toast('연결되었습니다.');
+      const showToast = (msg, type = 'success') => setToast({ message: msg, type });
+
+      const saveUsersToDb = (newUsers) => {
+        setUsersDb(newUsers);
+        localStorage.setItem('ontologyUsersDB', JSON.stringify(newUsers));
+      };
+
+      const handleLogin = (id, pw) => {
+        const user = usersDb.find(u => u.id === id);
+        if (user && user.pw === pw) {
+          setCurrentUser(user);
+          if (user.needPwChange) {
+            setCurrentView('pwChange');
+          } else {
+            setCurrentView('dashboard');
           }
-          state.connectMode = false;
-          state.connectSource = null;
-        }
-        renderAll();
-        return;
-      }
-      state.selectedId = id; state.selectionType = 'node'; renderAll();
-    }
-
-    function startNodeDrag(ev, id) {
-      if (state.connectMode) return;
-      state.drag = { id, startX: ev.clientX, startY: ev.clientY, nodeX: getNodeById(id).x, nodeY: getNodeById(id).y };
-      state.selectedId = id; state.selectionType = 'node';
-    }
-    document.addEventListener('mousemove', (ev) => {
-      if (!state.drag) return;
-      const svg = document.getElementById('mapSvg');
-      const rect = svg.getBoundingClientRect();
-      const scaleX = 1200 / rect.width;
-      const scaleY = 700 / rect.height;
-      const node = getNodeById(state.drag.id);
-      node.x = state.drag.nodeX + (ev.clientX - state.drag.startX) * scaleX;
-      node.y = state.drag.nodeY + (ev.clientY - state.drag.startY) * scaleY;
-      renderMap();
-      renderDetailPanel();
-    });
-    document.addEventListener('mouseup', () => {
-      if (state.drag) { saveMap(); state.drag = null; }
-    });
-
-    document.getElementById('bgRect').addEventListener('click', () => {
-      if (state.connectMode) return;
-      state.selectedId = null; state.selectionType = null; renderAll();
-    });
-
-    function renderDetailPanel() {
-      const panel = document.getElementById('detailPanel');
-      if (!state.selectedId) {
-        panel.innerHTML = '<div class="muted">노드나 선을 클릭하면 상세 편집 패널이 열립니다.</div>';
-        return;
-      }
-      if (state.selectionType === 'node') renderNodePanel(panel, getNodeById(state.selectedId));
-      else renderEdgePanel(panel, getEdgeById(state.selectedId));
-    }
-
-    function createField(label, inputHtml) {
-      return '<div class="field"><label>' + label + '</label>' + inputHtml + '</div>';
-    }
-    function renderNodePanel(panel, node) {
-      if (!node) return;
-      let html = '';
-      html += '<div class="pill blue">노드 속성 편집</div>';
-      html += '<h3><input id="nodeLabelInput" style="font-size:24px;font-weight:800;border:0;border-bottom:2px dashed #cbd5e1;width:100%;padding:4px 0;" value="' + escapeHtml(node.label) + '"></h3>';
-      html += createField('유형', '<select id="nodeTypeSelect">' + Object.keys(typeLabels).map(k => '<option value="'+k+'"'+(node.type===k?' selected':'')+'>'+typeLabels[k]+'</option>').join('') + '</select>');
-      html += createField('상태', '<select id="nodeStatusSelect"><option>미진행</option><option>진행중</option><option>보류</option><option>완료</option></select>');
-      html += '<hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">';
-      Object.keys(defaultMeta[node.type]).filter(k => k !== '상태').forEach(key => {
-        const val = node.meta[key] || '';
-        if (['시작일','종료일','시행일','생성일'].includes(key)) {
-          html += createField(key, '<input data-meta-key="'+key+'" type="date" value="'+escapeAttr(val)+'">');
-        } else if (key === '데이터형태') {
-          html += createField(key,
-            '<select data-meta-key="'+key+'"><option value="">형태 선택...</option>' +
-            Object.keys(dataTypeGuides).map(opt => '<option value="'+opt+'"'+(val===opt?' selected':'')+'>'+opt+'</option>').join('') +
-            '</select>' +
-            '<div class="small muted" style="margin-top:6px;">'+ escapeHtml(dataTypeGuides[val] || '') +'</div>'
-          );
+          showToast(`${user.name}님 환영합니다!`);
         } else {
-          html += createField(key, '<input data-meta-key="'+key+'" type="text" value="'+escapeAttr(val)+'">');
+          showToast('ID(사번) 또는 비밀번호가 일치하지 않습니다.', 'error');
         }
-      });
-      const connected = state.edges.filter(e => e.source === node.id || e.target === node.id).map(edge => {
-        const other = getNodeById(edge.source === node.id ? edge.target : edge.source);
-        if (!other) return '';
-        return '<div class="connected-item"><div><span class="pill gray">'+typeLabels[other.type]+'</span> <b style="margin-left:6px;">'+escapeHtml(other.label)+'</b></div><div class="small muted" style="margin-top:6px;">'+escapeHtml(methodNames[edge.method] || '수동 연결')+'</div></div>';
-      }).join('');
-      html += '<hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">';
-      html += '<div class="section-title" style="font-size:16px;">연결된 객체</div>' + (connected || '<div class="muted">연결된 객체가 없습니다.</div>');
-      panel.innerHTML = html;
-      document.getElementById('nodeStatusSelect').value = node.meta.상태 || '미진행';
-      bindNodePanelEvents(node);
-    }
-    function bindNodePanelEvents(node) {
-      document.getElementById('nodeLabelInput').oninput = (e) => { node.label = e.target.value; saveMap(); renderMap(); };
-      document.getElementById('nodeTypeSelect').onchange = (e) => {
-        pushHistory();
-        const newType = e.target.value;
-        node.type = newType; node.color = typeColors[newType];
-        const prevMeta = node.meta || {};
-        node.meta = clone(defaultMeta[newType]);
-        Object.keys(prevMeta).forEach(k => {
-          if (k === '상태' || k === '첨부파일' || !(k in defaultMeta[node.type])) node.meta[k] = prevMeta[k];
-        });
-        saveMap(); renderAll();
       };
-      document.getElementById('nodeStatusSelect').onchange = (e) => { node.meta.상태 = e.target.value; saveMap(); renderMap(); renderDashboard(); };
-      panelInputs = document.querySelectorAll('#detailPanel [data-meta-key]');
-      panelInputs.forEach(el => {
-        el.oninput = el.onchange = (e) => {
-          node.meta[e.target.dataset.metaKey] = e.target.value;
-          saveMap(); renderMap(); renderDashboard();
-          if (e.target.dataset.metaKey === '데이터형태') renderDetailPanel();
-        };
-      });
-    }
 
-    function renderEdgePanel(panel, edge) {
-      if (!edge) return;
-      panel.innerHTML = [
-        '<div class="pill blue">관계선 속성 편집</div>',
-        '<h3>연결 방식 정의</h3>',
-        createField('연결 방식', '<select id="edgeMethodSelect">' + Object.keys(methodNames).map(k => '<option value="'+k+'"'+(edge.method===k?' selected':'')+'>'+methodNames[k]+'</option>').join('') + '</select>'),
-        createField('수동 관계명', '<input id="edgeLabelInput" type="text" value="'+escapeAttr(edge.label || '')+'">'),
-        createField('상세 로직', '<textarea id="edgeLogicInput">'+escapeHtml(edge.logic || '')+'</textarea>'),
-        '<div class="modal-actions" style="justify-content:flex-start;">',
-        '<button id="reverseEdgeBtn" class="btn-gray">방향 반전</button>',
-        '</div>'
-      ].join('');
-      document.getElementById('edgeMethodSelect').onchange = (e) => { edge.method = e.target.value; saveMap(); renderAll(); };
-      document.getElementById('edgeLabelInput').oninput = (e) => { edge.label = e.target.value; saveMap(); renderMap(); };
-      document.getElementById('edgeLogicInput').oninput = (e) => { edge.logic = e.target.value; saveMap(); renderMap(); };
-      document.getElementById('reverseEdgeBtn').onclick = () => {
-        const s = edge.source; edge.source = edge.target; edge.target = s; saveMap(); toast('화살표 방향이 변경되었습니다.'); renderAll();
+      const handlePasswordChangeSubmit = (newPw) => {
+        const updatedUsers = usersDb.map(u => u.id === currentUser.id ? { ...u, pw: newPw, needPwChange: false } : u);
+        saveUsersToDb(updatedUsers);
+        setCurrentUser({ ...currentUser, pw: newPw, needPwChange: false });
+        setCurrentView('dashboard');
+        showToast('비밀번호가 성공적으로 변경되었습니다.');
+        setIsAnytimePwModalOpen(false);
       };
+
+      const handleAddUser = (newUser) => {
+        if (usersDb.find(u => u.id === newUser.id)) {
+          showToast('이미 존재하는 ID(사번)입니다.', 'error');
+          return false;
+        }
+        saveUsersToDb([...usersDb, newUser]);
+        showToast('신규 계정이 추가되었습니다.');
+        return true;
+      };
+
+      const handleUpdateUser = (updatedUser, originalId = updatedUser.id) => {
+        if (originalId !== updatedUser.id && usersDb.find(u => u.id === updatedUser.id)) {
+          showToast('이미 존재하는 ID(사번)입니다.', 'error');
+          return false;
+        }
+        const updatedList = usersDb.map(u => u.id === originalId ? updatedUser : u);
+        saveUsersToDb(updatedList);
+        if (currentUser.id === originalId) setCurrentUser(updatedUser);
+        showToast('계정 정보가 성공적으로 반영되었습니다.');
+        return true;
+      };
+
+      const handleDeleteUser = (userId) => {
+        if (userId === 'admin') {
+          showToast('최고 관리자 계정은 삭제할 수 없습니다.', 'error');
+          return;
+        }
+        saveUsersToDb(usersDb.filter(u => u.id !== userId));
+        showToast('계정이 삭제되었습니다.');
+      };
+
+      const handleLogout = () => {
+        setCurrentUser(null);
+        setCurrentView('login');
+        showToast('로그아웃 되었습니다.');
+      };
+
+      if (currentView === 'login') return <LoginView onLogin={handleLogin} />;
+      if (currentView === 'pwChange') return <PasswordChangeView onSubmit={handlePasswordChangeSubmit} />;
+
+      return (
+        <div className="flex h-screen bg-slate-50 font-sans text-slate-800 selection:bg-blue-200">
+          <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col transition-all duration-300 shrink-0 shadow-2xl z-30">
+            <div className="h-16 flex items-center px-6 font-bold text-white text-lg tracking-wide border-b border-slate-800 bg-slate-950">
+              <Network className="mr-2 text-blue-500" size={24} />
+              Ontology Map
+            </div>
+            <nav className="flex-1 py-6 space-y-1 px-3">
+              <NavItem icon={<LayoutDashboard />} label="대시보드" active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} />
+              <NavItem icon={<Network />} label="온톨로지 맵 뷰어" active={currentView === 'map'} onClick={() => setCurrentView('map')} />
+              {currentUser?.role === 'System Admin' && (
+                <NavItem icon={<Users />} label="계정/권한 관리" active={currentView === 'admin'} onClick={() => setCurrentView('admin')} />
+              )}
+            </nav>
+            <div className="p-4 border-t border-slate-800 bg-slate-950 flex flex-col space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold shadow-inner">
+                    {currentUser?.name.charAt(0)}
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-white font-bold">{currentUser?.name}</p>
+                    <p className="text-[10px] text-blue-300">{currentUser?.role}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 pt-2 border-t border-slate-800">
+                <button onClick={() => setIsAnytimePwModalOpen(true)} className="flex-1 flex items-center justify-center px-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-bold transition">
+                  <Settings size={14} className="mr-1.5" /> 비밀번호
+                </button>
+                <button onClick={handleLogout} className="flex-1 flex items-center justify-center px-2 py-1.5 bg-red-900/30 hover:bg-red-800/50 text-red-300 rounded text-xs font-bold transition">
+                  <LogOut size={14} className="mr-1.5" /> 로그아웃
+                </button>
+              </div>
+            </div>
+          </aside>
+
+          <main className="flex-1 flex flex-col overflow-hidden relative min-w-0">
+            <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shadow-sm z-10 shrink-0">
+              <h1 className="text-lg font-extrabold text-slate-800">
+                {currentView === 'dashboard' && '과제 및 품질 대시보드'}
+                {currentView === 'map' && '온톨로지 맵 탐색기'}
+                {currentView === 'admin' && '시스템 관리자 전용 대시보드'}
+              </h1>
+            </header>
+
+            <MapAndDashboardContainer 
+              currentView={currentView} 
+              setCurrentView={setCurrentView} 
+              showToast={showToast} 
+              currentUser={currentUser} 
+              usersDb={usersDb} 
+              onAddUser={handleAddUser}
+              onUpdateUser={handleUpdateUser}
+              onDeleteUser={handleDeleteUser}
+            />
+          </main>
+          
+          {isAnytimePwModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+               <PasswordChangeForm onClose={() => setIsAnytimePwModalOpen(false)} onSubmit={handlePasswordChangeSubmit} currentPwReq={true} userPw={currentUser.pw} />
+            </div>
+          )}
+
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        </div>
+      );
     }
 
-    function deleteSelected() {
-      if (!state.selectedId) return;
-      pushHistory();
-      if (state.selectionType === 'node') {
-        state.nodes = state.nodes.filter(n => n.id !== state.selectedId);
-        state.edges = state.edges.filter(e => e.source !== state.selectedId && e.target !== state.selectedId);
-      } else {
-        state.edges = state.edges.filter(e => e.id !== state.selectedId);
-      }
-      state.selectedId = null; state.selectionType = null;
-      saveMap(); renderAll(); toast('삭제되었습니다.');
-    }
+    const NavItem = ({ icon, label, active, onClick }) => (
+      <button 
+        onClick={onClick}
+        className={`w-full flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+          active ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+        }`}
+      >
+        <span className="mr-3">{icon}</span>
+        {label}
+      </button>
+    );
 
-    function renderUsers() {
-      const tbody = document.getElementById('usersTableBody');
-      tbody.innerHTML = '';
-      state.users.forEach(u => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = '<td><b>'+escapeHtml(u.id)+'</b></td>' +
-          '<td>'+escapeHtml(u.name)+'</td>' +
-          '<td>'+escapeHtml(u.dept)+'</td>' +
-          '<td>'+escapeHtml(u.role)+'</td>' +
-          '<td>'+(u.needPwChange ? '<span class="pill red">비번 변경 대기</span>' : '<span class="pill blue">활성</span>')+'</td>' +
-          '<td><button data-id="'+u.id+'" class="edit-user">수정</button> <button data-id="'+u.id+'" class="delete-user" '+(u.id==='admin'?'disabled':'')+'>삭제</button></td>';
-        tbody.appendChild(tr);
-      });
-      tbody.querySelectorAll('.edit-user').forEach(btn => btn.onclick = () => openUserModal(btn.dataset.id));
-      tbody.querySelectorAll('.delete-user').forEach(btn => btn.onclick = () => deleteUser(btn.dataset.id));
-    }
-    function openUserModal(id) {
-      const isNew = !id;
-      state.editingUserOriginalId = id || null;
-      const u = isNew ? { id:'', name:'', dept:'', role:'Editor', needPwChange:true } : clone(state.users.find(x => x.id === id));
-      document.getElementById('userModalTitle').textContent = isNew ? '신규 계정 추가' : '계정 정보 수정';
-      document.getElementById('userId').value = u.id;
-      document.getElementById('userName').value = u.name;
-      document.getElementById('userDept').value = u.dept;
-      document.getElementById('userRole').value = u.role;
-      document.getElementById('userNeedPwChange').checked = !!u.needPwChange;
-      document.getElementById('userModal').classList.remove('hidden');
-    }
-    function closeUserModal() { document.getElementById('userModal').classList.add('hidden'); }
-    function saveUser() {
-      const id = document.getElementById('userId').value.trim();
-      const name = document.getElementById('userName').value.trim();
-      const dept = document.getElementById('userDept').value.trim();
-      const role = document.getElementById('userRole').value;
-      const needPwChange = document.getElementById('userNeedPwChange').checked;
-      if (!id || !name || !dept) return toast('필수값을 입력하세요.', 'error');
-      if (!state.editingUserOriginalId && state.users.some(u => u.id === id)) return toast('이미 존재하는 ID입니다.', 'error');
-      if (state.editingUserOriginalId && state.editingUserOriginalId !== id && state.users.some(u => u.id === id)) return toast('이미 존재하는 ID입니다.', 'error');
-      if (!state.editingUserOriginalId) {
-        state.users.push({ id, pw:id, name, dept, role, needPwChange:true });
-      } else {
-        const user = state.users.find(u => u.id === state.editingUserOriginalId);
-        if (state.editingUserOriginalId === 'admin') idVal = 'admin';
-        user.id = state.editingUserOriginalId === 'admin' ? 'admin' : id;
-        user.name = name; user.dept = dept; user.role = role; user.needPwChange = needPwChange;
-        if (needPwChange) user.pw = user.id;
-        if (state.currentUser && state.currentUser.id === state.editingUserOriginalId) state.currentUser = user;
-      }
-      saveUsers(); renderUsers(); closeUserModal(); toast('계정 정보가 저장되었습니다.');
-    }
-    function deleteUser(id) {
-      if (id === 'admin') return;
-      state.users = state.users.filter(u => u.id !== id);
-      saveUsers(); renderUsers(); toast('계정이 삭제되었습니다.');
-    }
-
-    function renderAll() {
-      renderDashboard();
-      renderMap();
-      renderDetailPanel();
-      if (state.currentView === 'admin') renderUsers();
-      document.getElementById('connectBtn').textContent = state.connectMode ? '연결 모드 취소' : '선 연결';
-    }
-
-    function escapeHtml(str) { return String(str || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
-    function escapeAttr(str) { return escapeHtml(str).replace(/\n/g, ' '); }
-
-    document.getElementById('loginBtn').onclick = login;
-    document.getElementById('loginPw').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
-    document.getElementById('logoutBtn').onclick = logout;
-    document.getElementById('changePwBtn').onclick = () => openPwModal('optional');
-    document.getElementById('savePwBtn').onclick = savePassword;
-    document.getElementById('cancelPwBtn').onclick = closePwModal;
-
-    document.getElementById('navDashboard').onclick = () => setView('dashboard');
-    document.getElementById('navMap').onclick = () => setView('map');
-    document.getElementById('navAdmin').onclick = () => setView('admin');
-
-    document.getElementById('addNodeBtn').onclick = openNodeModal;
-    document.getElementById('closeNodeModal').onclick = closeNodeModal;
-    document.getElementById('connectBtn').onclick = () => {
-      state.connectMode = !state.connectMode;
-      if (!state.connectMode) state.connectSource = null;
-      renderAll();
+    const LoginView = ({ onLogin }) => {
+      const [id, setId] = useState('');
+      const [pw, setPw] = useState('');
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-100">
+          <div className="bg-white p-10 rounded-2xl shadow-2xl w-[400px]">
+            <div className="flex justify-center mb-6">
+              <div className="bg-blue-600 p-4 rounded-2xl text-white shadow-lg"><Network size={40} /></div>
+            </div>
+            <h2 className="text-2xl font-extrabold text-center text-slate-800 mb-2">온톨로지 맵 시스템</h2>
+            <p className="text-center text-sm text-slate-500 mb-8 font-medium">관리자가 발급한 사번과 비밀번호로 로그인하세요.</p>
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">ID (사번)</label>
+                <input 
+                  type="text" value={id} onChange={e => setId(e.target.value)} 
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition font-medium" 
+                  placeholder="사번을 입력하세요" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">비밀번호</label>
+                <input 
+                  type="password" value={pw} onChange={e => setPw(e.target.value)} 
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition font-medium" 
+                  placeholder="••••••••" 
+                  onKeyDown={e => e.key === 'Enter' && onLogin(id, pw)}
+                />
+              </div>
+              <button 
+                onClick={() => onLogin(id, pw)} 
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-extrabold hover:bg-blue-700 transition-colors mt-2 shadow-md"
+              >
+                로그인
+              </button>
+            </div>
+            <div className="mt-8 text-center text-xs text-slate-400 font-medium bg-slate-50 p-3 rounded-lg">
+              * 최초 접속 시 ID와 비밀번호는 동일하게 발급됩니다.<br/>
+              * 기본 관리자 계정: admin / admin<br/>
+              * 계정 발급 문의: 인사/조직문화팀
+            </div>
+          </div>
+        </div>
+      );
     };
-    document.getElementById('deleteBtn').onclick = deleteSelected;
-    document.getElementById('saveMapBtn').onclick = () => saveMap(true);
-    document.getElementById('undoBtn').onclick = undo;
-    document.getElementById('redoBtn').onclick = redo;
-    document.getElementById('mapSearch').oninput = (e) => { state.mapSearch = e.target.value; renderMap(); };
 
-    document.getElementById('openUserModalBtn').onclick = () => openUserModal();
-    document.getElementById('cancelUserBtn').onclick = closeUserModal;
-    document.getElementById('saveUserBtn').onclick = saveUser;
+    const PasswordChangeView = ({ onSubmit }) => (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <PasswordChangeForm onClose={null} onSubmit={onSubmit} currentPwReq={false} />
+      </div>
+    );
 
-    renderNodeModalButtons();
+    const PasswordChangeForm = ({ onClose, onSubmit, currentPwReq, userPw }) => {
+      const [currentPw, setCurrentPw] = useState('');
+      const [newPw, setNewPw] = useState('');
+      const [confirmPw, setConfirmPw] = useState('');
+      const [error, setError] = useState('');
+
+      const handleSubmit = () => {
+        if (currentPwReq && currentPw !== userPw) {
+          setError('현재 비밀번호가 일치하지 않습니다.'); return;
+        }
+        if (newPw.length < 4) {
+          setError('새 비밀번호는 4자리 이상이어야 합니다.'); return;
+        }
+        if (newPw !== confirmPw) {
+          setError('새 비밀번호와 확인이 일치하지 않습니다.'); return;
+        }
+        onSubmit(newPw);
+      };
+
+      return (
+        <div className="bg-white p-8 rounded-2xl shadow-2xl w-[400px] border-t-4 border-amber-500 relative">
+          {onClose && (
+            <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X size={20}/></button>
+          )}
+          <div className="flex items-center space-x-2 mb-6">
+            <Lock className="text-amber-500" size={28} />
+            <h2 className="text-xl font-extrabold text-slate-800">비밀번호 변경</h2>
+          </div>
+          <p className="text-sm text-slate-600 mb-6 font-medium leading-relaxed">
+            보안을 위해 비밀번호를 변경해 주세요. 변경된 비밀번호로 즉시 로그인 상태가 유지됩니다.
+          </p>
+          <div className="space-y-4">
+            {currentPwReq && (
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">현재 비밀번호</label>
+                <input type="password" value={currentPw} onChange={e=>setCurrentPw(e.target.value)} className="w-full px-4 py-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 font-medium" />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1">새 비밀번호</label>
+              <input type="password" value={newPw} onChange={e=>setNewPw(e.target.value)} className="w-full px-4 py-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 font-medium" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1">새 비밀번호 확인</label>
+              <input type="password" value={confirmPw} onChange={e=>setConfirmPw(e.target.value)} className="w-full px-4 py-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 font-medium" />
+            </div>
+            
+            {error && <p className="text-xs font-bold text-red-500 bg-red-50 p-2 rounded">{error}</p>}
+            
+            <button onClick={handleSubmit} className="w-full bg-amber-500 text-white py-3 rounded-lg font-extrabold hover:bg-amber-600 shadow-md mt-2 transition">
+              변경 완료 및 저장
+            </button>
+          </div>
+        </div>
+      );
+    };
+
+    const MapAndDashboardContainer = ({ currentView, setCurrentView, showToast, currentUser, usersDb, onAddUser, onUpdateUser, onDeleteUser }) => {
+      const [nodes, setNodes] = useState(() => {
+        const saved = localStorage.getItem('ontologyMapDB');
+        return saved ? JSON.parse(saved).nodes || [] : [];
+      });
+      const [edges, setEdges] = useState(() => {
+        const saved = localStorage.getItem('ontologyMapDB');
+        return saved ? JSON.parse(saved).edges || [] : [];
+      });
+
+      useEffect(() => {
+        try {
+          localStorage.setItem('ontologyMapDB', JSON.stringify({ nodes, edges }));
+        } catch (error) {
+          console.error("Auto-save failed", error);
+        }
+      }, [nodes, edges]);
+
+      const handleSaveMap = () => {
+        try {
+          localStorage.setItem('ontologyMapDB', JSON.stringify({ nodes, edges }));
+          showToast('맵 구조가 안전하게 저장되었습니다.', 'success');
+        } catch(e) {
+          showToast('저장 공간(용량) 부족으로 실패했습니다.', 'error');
+        }
+      };
+
+      return (
+        <div className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50/50 relative">
+          {currentView === 'dashboard' && <DashboardView onNavMap={() => setCurrentView('map')} nodes={nodes} edges={edges} currentUser={currentUser} />}
+          {currentView === 'map' && <MapView nodes={nodes} setNodes={setNodes} edges={edges} setEdges={setEdges} handleSaveMap={handleSaveMap} showToast={showToast} users={usersDb} />}
+          {currentView === 'admin' && <AdminView users={usersDb} onAddUser={onAddUser} onUpdateUser={onUpdateUser} onDeleteUser={onDeleteUser} />}
+        </div>
+      );
+    };
+
+    const DashboardView = ({ onNavMap, nodes, edges, currentUser }) => {
+      const myNodes = nodes.filter(n => n.meta?.담당자?.includes(currentUser.name) || n.meta?.접근권한?.includes(currentUser.name));
+      const myEdgesCount = edges.filter(e => myNodes.some(n => n.id === e.source || n.id === e.target)).length;
+
+      const connectedNodes = nodes.filter(n => edges.some(e => e.source === n.id || e.target === n.id));
+      const connectedTaskCount = connectedNodes.filter(n => n.type === 'Task').length;
+      const connectedDataCount = connectedNodes.filter(n => n.type === 'Data').length;
+      const connectedSystemCount = connectedNodes.filter(n => n.type === 'System').length;
+      const connectedDocCount = connectedNodes.filter(n => ['Law', 'Regulation', 'Guideline', 'Deliverable'].includes(n.type)).length;
+
+      return (
+        <div className="space-y-6 max-w-6xl mx-auto">
+          <h2 className="text-lg font-bold text-slate-800">나의 담당 현황</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-2xl shadow-lg flex flex-col justify-between text-white relative overflow-hidden">
+              <div className="absolute -right-4 -top-4 opacity-20"><Briefcase size={120} /></div>
+              <p className="text-sm font-semibold opacity-90 relative z-10">내가 담당하는 객체 (과제 등)</p>
+              <div className="text-4xl font-extrabold mt-2 relative z-10">{myNodes.length}<span className="text-base font-medium opacity-80 ml-1">개</span></div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute -right-4 -top-4 opacity-5 text-indigo-500"><Network size={120} /></div>
+              <p className="text-sm font-bold text-slate-500 relative z-10">나의 객체와 연결된 관계망 수</p>
+              <div className="text-4xl font-extrabold text-indigo-600 mt-2 relative z-10">{myEdgesCount}<span className="text-base font-medium text-slate-400 ml-1">건 연결됨</span></div>
+            </div>
+          </div>
+
+          <h2 className="text-lg font-bold text-slate-800 mt-8">전체 객체 연결 현황 (온톨로지 맵)</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+              <p className="text-sm text-slate-500 font-bold">전체 연결된 객체</p>
+              <div className="text-3xl font-extrabold text-blue-600 mt-2">{connectedNodes.length}<span className="text-sm font-medium text-slate-400 ml-1">개</span></div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+              <p className="text-sm text-slate-500 font-bold">연결된 과제 (Task)</p>
+              <div className="text-3xl font-extrabold text-slate-800 mt-2">{connectedTaskCount}<span className="text-sm font-medium text-slate-400 ml-1">개</span></div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+              <p className="text-sm text-slate-500 font-bold">연결된 데이터 (Data)</p>
+              <div className="text-3xl font-extrabold text-slate-800 mt-2">{connectedDataCount}<span className="text-sm font-medium text-slate-400 ml-1">개</span></div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+              <p className="text-sm text-slate-500 font-bold">연결된 문서/시스템</p>
+              <div className="text-3xl font-extrabold text-slate-800 mt-2">{connectedSystemCount + connectedDocCount}<span className="text-sm font-medium text-slate-400 ml-1">개</span></div>
+            </div>
+          </div>
+
+          <h2 className="text-lg font-bold text-slate-800 mt-8">데이터 품질 모니터링</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+              <p className="text-sm text-slate-500 font-bold">전체 등록 노드</p>
+              <div className="text-3xl font-extrabold text-slate-800 mt-2">{nodes.length}<span className="text-sm font-medium text-slate-400 ml-1">개</span></div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+              <p className="text-sm text-slate-500 font-bold">전체 연결 엣지</p>
+              <div className="text-3xl font-extrabold text-slate-800 mt-2">{edges.length}<span className="text-sm font-medium text-slate-400 ml-1">개</span></div>
+            </div>
+            <div className="bg-red-50 p-6 rounded-2xl shadow-sm border border-red-100 flex flex-col justify-between">
+              <p className="text-sm text-red-600 font-bold flex items-center"><AlertCircle size={16} className="mr-1"/> 고립된 객체 (연결 없음)</p>
+              <div className="text-3xl font-extrabold text-red-600 mt-2">
+                {nodes.filter(n => !edges.some(e => e.source === n.id || e.target === n.id)).length}
+                <span className="text-sm font-medium text-red-400 ml-1">건 조치 필요</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const MapView = ({ nodes, setNodes, edges, setEdges, handleSaveMap, showToast, users }) => {
+      const [past, setPast] = useState([]);
+      const [future, setFuture] = useState([]);
+
+      const [selectedId, setSelectedId] = useState(null); 
+      const [selectionType, setSelectionType] = useState(null); 
+      
+      const [dragging, setDragging] = useState(null); 
+      const [dragStartPos, setDragStartPos] = useState(null);
+
+      const [connectMode, setConnectMode] = useState(false);
+      const [connectSource, setConnectSource] = useState(null);
+      
+      const [isPanelOpen, setIsPanelOpen] = useState(false); 
+      const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+      const svgRef = useRef(null);
+      const selectedNode = selectionType === 'node' ? nodes.find(n => n.id === selectedId) : null;
+      const selectedEdge = selectionType === 'edge' ? edges.find(e => e.id === selectedId) : null;
+
+      const saveState = (prevNodes = nodes, prevEdges = edges) => {
+        setPast(prev => [...prev, { nodes: prevNodes, edges: prevEdges }]);
+        setFuture([]);
+      };
+
+      const undo = () => {
+        if (past.length === 0) return;
+        const previous = past[past.length - 1];
+        setFuture(prev => [{ nodes, edges }, ...prev]);
+        setPast(prev => prev.slice(0, prev.length - 1));
+        setNodes(previous.nodes);
+        setEdges(previous.edges);
+      };
+
+      const redo = () => {
+        if (future.length === 0) return;
+        const next = future[0];
+        setPast(prev => [...prev, { nodes, edges }]);
+        setFuture(prev => prev.slice(1));
+        setNodes(next.nodes);
+        setEdges(next.edges);
+      };
+
+      const handleNodeMouseDown = (e, id) => {
+        e.stopPropagation(); 
+        if (connectMode) {
+          if (!connectSource) {
+            setConnectSource(id);
+            showToast('대상 노드를 클릭하면 선이 연결됩니다.', 'success');
+          } else {
+            if (connectSource !== id) {
+              saveState();
+              const newEdge = { id: `e_${Date.now()}`, source: connectSource, target: id, label: '', method: 'manual', logic: '' };
+              setEdges([...edges, newEdge]);
+              showToast('성공적으로 연결되었습니다. 우측에서 규칙을 설정하세요.', 'success');
+            }
+            setConnectMode(false);
+            setConnectSource(null);
+          }
+          return;
+        }
+        setDragging(id);
+        setSelectedId(id);
+        setSelectionType('node');
+        if (!isPanelOpen) setIsPanelOpen(true);
+        const node = nodes.find(n => n.id === id);
+        if (node) setDragStartPos({ x: node.x, y: node.y });
+      };
+
+      const handleEdgeClick = (e, id) => {
+        e.stopPropagation();
+        if (connectMode) return;
+        setSelectedId(id);
+        setSelectionType('edge');
+        if (!isPanelOpen) setIsPanelOpen(true);
+      };
+
+      const handleMouseMove = (e) => {
+        if (!dragging || !svgRef.current) return;
+        const CTM = svgRef.current.getScreenCTM();
+        setNodes(prev => prev.map(n => {
+          if (n.id === dragging) return { ...n, x: (e.clientX - CTM.e) / CTM.a, y: (e.clientY - CTM.f) / CTM.d };
+          return n;
+        }));
+      };
+
+      const handleMouseUp = () => {
+        if (dragging && dragStartPos) {
+          const node = nodes.find(n => n.id === dragging);
+          if (node && (node.x !== dragStartPos.x || node.y !== dragStartPos.y)) {
+            const prevNodes = nodes.map(n => n.id === dragging ? { ...n, x: dragStartPos.x, y: dragStartPos.y } : n);
+            saveState(prevNodes, edges);
+          }
+        }
+        setDragging(null);
+        setDragStartPos(null);
+      };
+
+      const addNode = (type) => {
+        saveState();
+        const labels = { 
+          'Task': '새로운 과제', 'Data': '새로운 데이터', 'System': '새로운 시스템',
+          'Law': '새로운 국가법령', 'Regulation': '새로운 사내규정', 'Guideline': '새로운 지침', 'Deliverable': '새로운 산출물'
+        };
+        // 화면 중앙에 생성
+        const mapContainer = document.getElementById('map-container');
+        const cx = mapContainer ? mapContainer.clientWidth / 2 - 50 : 300;
+        const cy = mapContainer ? mapContainer.clientHeight / 2 - 50 : 300;
+
+        const newNode = {
+          id: `n_${Date.now()}`,
+          type,
+          label: labels[type],
+          x: cx + Math.random() * 50,
+          y: cy + Math.random() * 50,
+          color: typeColors[type],
+          meta: { ...defaultMeta[type] }
+        };
+        setNodes([...nodes, newNode]);
+        setSelectedId(newNode.id);
+        setSelectionType('node');
+        if (!isPanelOpen) setIsPanelOpen(true);
+      };
+
+      const deleteSelected = () => {
+        saveState();
+        if (selectionType === 'node') {
+          setNodes(nodes.filter(n => n.id !== selectedId));
+          setEdges(edges.filter(e => e.source !== selectedId && e.target !== selectedId));
+        } else if (selectionType === 'edge') {
+          setEdges(edges.filter(e => e.id !== selectedId));
+        }
+        setSelectedId(null);
+        setSelectionType(null);
+        setIsPanelOpen(false);
+        showToast('삭제되었습니다.');
+      };
+
+      const updateNodeType = (id, newType) => {
+        saveState();
+        setNodes(nodes.map(n => {
+          if (n.id === id) {
+            const newMeta = { ...defaultMeta[newType] };
+            Object.keys(n.meta).forEach(k => {
+              if (k === '상태' || k === '첨부파일' || !Object.keys(defaultMeta[n.type]).includes(k)) {
+                newMeta[k] = n.meta[k]; 
+              }
+            });
+            return { ...n, type: newType, color: typeColors[newType], meta: newMeta };
+          }
+          return n;
+        }));
+      };
+
+      const updateNode = (id, key, value) => {
+        setNodes(nodes.map(n => n.id === id ? { ...n, [key]: value } : n));
+      };
+
+      const updateNodeMeta = (id, metaKey, value) => {
+        setNodes(nodes.map(n => n.id === id ? { ...n, meta: { ...n.meta, [metaKey]: value } } : n));
+      };
+
+      const renameNodeMetaKey = (id, oldKey, newKey) => {
+        if (!newKey || oldKey === newKey) return;
+        setNodes(nodes.map(n => {
+          if (n.id === id) {
+            const newMeta = { ...n.meta };
+            newMeta[newKey] = newMeta[oldKey];
+            delete newMeta[oldKey];
+            return { ...n, meta: newMeta };
+          }
+          return n;
+        }));
+      };
+
+      const deleteNodeMetaKey = (id, key) => {
+        setNodes(nodes.map(n => {
+          if (n.id === id) {
+            const newMeta = { ...n.meta };
+            delete newMeta[key];
+            return { ...n, meta: newMeta };
+          }
+          return n;
+        }));
+      };
+
+      const updateEdge = (id, key, value) => {
+        if (key === 'method') saveState(); 
+        setEdges(edges.map(e => e.id === id ? { ...e, [key]: value } : e));
+      };
+
+      const reverseEdgeDirection = (edgeId) => {
+        saveState();
+        setEdges(edges.map(e => e.id === edgeId ? { ...e, source: e.target, target: e.source } : e));
+        showToast('화살표 방향이 변경되었습니다.', 'success');
+      };
+
+      const addMemo = (nodeId) => {
+        saveState();
+        updateNodeMeta(nodeId, `메모_${Math.floor(Math.random() * 1000)}`, '');
+      };
+
+      const handleFileUpload = (e, nodeId) => {
+        const file = e.target.files[0];
+        if (file) {
+          if (file.size > 2 * 1024 * 1024) {
+            showToast('파일 크기가 너무 큽니다. 프로토타입 환경에서는 2MB 이하의 파일만 허용됩니다.', 'error');
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const fileData = { name: file.name, url: event.target.result };
+            updateNodeMeta(nodeId, '첨부파일', fileData);
+            showToast(`[${file.name}] 파일이 안전하게 첨부 및 저장되었습니다.`);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      const getConnectedObjects = (nodeId) => {
+        return edges.filter(e => e.source === nodeId || e.target === nodeId).map(edge => {
+          const isSource = edge.source === nodeId;
+          const connectedNodeId = isSource ? edge.target : edge.source;
+          const connectedNode = nodes.find(n => n.id === connectedNodeId);
+          return { edge, node: connectedNode, direction: isSource ? 'outgoing' : 'incoming' };
+        }).filter(item => item.node); 
+      };
+
+      const renderMetaInput = (key, val, nodeId) => {
+        const isUrl = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('www') || val.startsWith('link.'));
+
+        if (['시작일', '종료일', '시행일', '생성일'].includes(key)) {
+          return (
+            <input 
+              type="date" 
+              className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-medium transition" 
+              value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
+            />
+          );
+        }
+        
+        if (['담당자', '접근권한', '승인자'].includes(key)) {
+          const currentUsers = val ? val.split(',').map(s=>s.trim()).filter(Boolean) : [];
+          const toggleUser = (userName) => {
+            if(currentUsers.includes(userName)) updateNodeMeta(nodeId, key, currentUsers.filter(u => u !== userName).join(', '));
+            else updateNodeMeta(nodeId, key, [...currentUsers, userName].join(', '));
+          };
+          
+          return (
+            <div className="space-y-2">
+              <select 
+                className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer font-bold text-slate-600 transition" 
+                onChange={(e) => { if(e.target.value) toggleUser(e.target.value); e.target.value=''; }}
+                defaultValue=""
+              >
+                <option value="">+ 계정 선택 (복수 가능)</option>
+                {(users || []).map(u => <option key={u.id} value={u.name}>{u.name} ({u.dept})</option>)}
+              </select>
+              {currentUsers.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {currentUsers.map(u => (
+                    <span key={u} className="inline-flex items-center px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-bold shadow-sm">
+                      {u} <button onClick={() => toggleUser(u)} className="ml-1 hover:text-blue-900 bg-blue-200 rounded-full p-0.5"><X size={10}/></button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        if (key === '데이터형태') {
+          return (
+            <DataFormatInput key={`df_${nodeId}`} val={val} nodeId={nodeId} updateNodeMeta={updateNodeMeta} />
+          );
+        }
+
+        let placeholder = "값을 입력하세요";
+        if (key === '목적') placeholder = "과제의 목적을 입력하세요.";
+        if (key === '데이터셋명') placeholder = "데이터명을 입력하세요.";
+
+        return (
+          <div className="relative flex items-center w-full">
+            <input 
+              type="text" 
+              className={`w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-medium transition ${isUrl ? 'pr-8 text-blue-600 underline' : 'text-slate-800'}`} 
+              value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
+              placeholder={placeholder} 
+            />
+            {isUrl && (
+              <a 
+                href={val.startsWith('http') ? val : `https://${val}`} 
+                target="_blank" rel="noreferrer" 
+                className="absolute right-2.5 p-1 rounded-md text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition"
+                title="새 창에서 링크 열기"
+              >
+                <ExternalLink size={14} />
+              </a>
+            )}
+          </div>
+        );
+      };
+
+      return (
+        <div className="flex h-full rounded-2xl bg-white shadow-lg border border-slate-200 overflow-hidden flex-col relative" id="map-container">
+          
+          <div className="bg-white border-b border-slate-200 p-2.5 flex items-center justify-between z-10 px-5 shrink-0 shadow-sm">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-1 border-r border-slate-200 pr-4">
+                <button onClick={undo} disabled={past.length === 0} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 disabled:opacity-30 transition"><Undo2 size={16} /></button>
+                <button onClick={redo} disabled={future.length === 0} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 disabled:opacity-30 transition"><Redo2 size={16} /></button>
+              </div>
+
+              <div className="flex items-center space-x-2 border-r border-slate-200 pr-4">
+                <button onClick={() => setIsAddModalOpen(true)} className="flex items-center px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-extrabold transition">
+                  <Plus size={16} className="mr-1.5" /> 노드 추가
+                </button>
+                <button onClick={() => { setConnectMode(!connectMode); setConnectSource(null); }} className={`flex items-center px-4 py-2 rounded-lg text-sm font-extrabold transition ${connectMode ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 hover:bg-slate-100 text-slate-700'}`}>
+                  <LinkIcon size={16} className="mr-1.5" /> {connectMode ? '연결 모드 취소' : '선 연결'}
+                </button>
+              </div>
+
+              <div className="flex items-center">
+                <button onClick={deleteSelected} disabled={!selectedId} className="flex items-center px-3 py-2 hover:bg-red-50 text-red-500 rounded-lg text-sm font-bold transition disabled:opacity-30 disabled:bg-transparent">
+                  <Trash2 size={16} className="mr-1.5" /> 삭제
+                </button>
+              </div>
+            </div>
+
+            <button onClick={handleSaveMap} className="flex items-center px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-bold transition shadow-md">
+              <Save size={16} className="mr-2" /> 맵 저장
+            </button>
+          </div>
+
+          <div className="flex flex-1 relative min-h-0 bg-slate-50/50">
+            
+            <div className="flex-1 relative cursor-crosshair overflow-hidden" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+              <svg ref={svgRef} className="w-full h-full">
+                <defs>
+                  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                    <circle cx="2" cy="2" r="1" fill="#cbd5e1" />
+                  </pattern>
+                  
+                  <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.1" />
+                  </filter>
+
+                  <marker id="arrow-green" viewBox="0 0 10 10" refX="24" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#10b981" />
+                  </marker>
+                  <marker id="arrow-red" viewBox="0 0 10 10" refX="24" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+                  </marker>
+                  <marker id="arrow-blue-selected" viewBox="0 0 10 10" refX="24" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" />
+                  </marker>
+                </defs>
+
+                <rect width="100%" height="100%" fill="url(#grid)" onClick={() => { if(!connectMode) { setSelectedId(null); setSelectionType(null); setIsPanelOpen(false); } }} />
+                
+                {edges.map((edge) => {
+                  const s = nodes.find(n => n.id === edge.source);
+                  const t = nodes.find(n => n.id === edge.target);
+                  if (!s || !t) return null;
+                  const isSelected = selectedId === edge.id && selectionType === 'edge';
+                  
+                  const hasRule = edge.method !== 'manual' || (edge.logic && edge.logic.trim() !== '');
+                  const edgeColor = hasRule ? '#10b981' : '#ef4444';
+                  const strokeColor = isSelected ? '#3b82f6' : edgeColor;
+                  const marker = isSelected ? 'arrow-blue-selected' : (hasRule ? 'arrow-green' : 'arrow-red');
+
+                  const displayText = edge.method === 'manual' ? (edge.label || '관계 입력') : methodNames[edge.method];
+
+                  return (
+                    <g key={edge.id} onClick={(e) => handleEdgeClick(e, edge.id)} className="cursor-pointer group">
+                      <line x1={s.x} y1={s.y} x2={t.x} y2={t.y} stroke="transparent" strokeWidth="20" />
+                      <line 
+                        x1={s.x} y1={s.y} x2={t.x} y2={t.y} 
+                        stroke={strokeColor} strokeWidth={isSelected ? "3" : "2"} 
+                        markerEnd={`url(#${marker})`} 
+                        className={!isSelected ? "opacity-80 group-hover:opacity-100 transition-opacity" : ""}
+                      />
+                      <rect x={(s.x + t.x)/2 - 50} y={(s.y + t.y)/2 - 12} width="100" height="24" rx="12" fill="white" stroke={strokeColor} strokeWidth={isSelected ? "2" : "1.5"} filter="url(#soft-shadow)" />
+                      <text x={(s.x + t.x)/2} y={(s.y + t.y)/2 + 4} textAnchor="middle" fontSize="10" fill={isSelected ? '#1d4ed8' : '#334155'} fontWeight="bold" pointerEvents="none">
+                        {displayText}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {nodes.map(node => {
+                  const isSelected = selectedId === node.id && selectionType === 'node';
+                  const isSource = connectSource === node.id;
+                  
+                  let symbol;
+                  const strokeStyle = {
+                    stroke: isSelected ? '#1e293b' : (isSource ? '#ef4444' : 'rgba(255,255,255,0.3)'),
+                    strokeWidth: isSelected || isSource ? "3" : "1"
+                  };
+
+                  if (node.type === 'Task') {
+                    symbol = <rect x="-26" y="-26" width="52" height="52" rx="14" fill={node.color} {...strokeStyle} filter="url(#soft-shadow)" className="transition-all" />;
+                  } else if (['Law', 'Regulation', 'Guideline', 'Deliverable'].includes(node.type)) {
+                    symbol = (
+                      <g filter="url(#soft-shadow)" className="transition-all">
+                        <path d="M-22,-26 L8,-26 L24,-12 L24,26 L-22,26 Z" fill={node.color} {...strokeStyle} />
+                        <path d="M8,-26 L8,-12 L24,-12" fill="rgba(255,255,255,0.2)" />
+                      </g>
+                    );
+                  } else if (node.type === 'System') {
+                    symbol = <rect x="-20" y="-20" width="40" height="40" rx="6" transform="rotate(45)" fill={node.color} {...strokeStyle} filter="url(#soft-shadow)" className="transition-all" />;
+                  } else { 
+                    symbol = <circle r="26" fill={node.color} {...strokeStyle} filter="url(#soft-shadow)" className="transition-all" />;
+                  }
+
+                  const status = node.meta?.상태 || '미진행';
+                  let badgeColor = '#94a3b8'; 
+                  if (status === '진행중') badgeColor = '#3b82f6'; 
+                  else if (status === '완료') badgeColor = '#10b981'; 
+                  else if (status === '보류') badgeColor = '#f59e0b'; 
+
+                  return (
+                    <g key={node.id} transform={`translate(${node.x}, ${node.y})`} onMouseDown={(e) => handleNodeMouseDown(e, node.id)} onClick={(e) => e.stopPropagation()} className={`cursor-pointer ${connectMode ? 'hover:opacity-75' : ''}`}>
+                      {symbol}
+                      
+                      <g transform="translate(14, -36)" filter="url(#soft-shadow)">
+                        <rect width="38" height="16" rx="8" fill={badgeColor} stroke="white" strokeWidth="1.5" />
+                        <text x="19" y="11" fontSize="9" fill="white" textAnchor="middle" fontWeight="bold">{status}</text>
+                      </g>
+
+                      <text y="5" textAnchor="middle" fontSize="16" fontWeight="900" fill="rgba(255,255,255,0.95)" pointerEvents="none">
+                        {node.type.charAt(0)}
+                      </text>
+
+                      <rect x="-65" y="34" width="130" height="26" rx="6" fill="white" stroke={isSelected ? '#1e293b' : '#e2e8f0'} filter="url(#soft-shadow)" />
+                      <text y="51" textAnchor="middle" fontSize="11" fontWeight="bold" fill={isSelected ? '#0f172a' : '#475569'} pointerEvents="none">
+                        {node.label}
+                      </text>
+                    </g>
+                  )
+                })}
+              </svg>
+
+              {nodes.length === 0 && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center border border-slate-100">
+                    <Network size={56} className="text-blue-400 mb-4 animate-pulse" />
+                    <p className="text-slate-800 font-extrabold text-lg">캔버스가 비어있습니다.</p>
+                    <p className="text-slate-500 font-medium text-sm mt-1">상단의 '+ 노드 추가' 버튼을 눌러 시작하세요.</p>
+                  </div>
+                </div>
+              )}
+
+              <button 
+                onClick={() => setIsPanelOpen(!isPanelOpen)} 
+                className={`absolute right-0 top-1/2 transform -translate-y-1/2 bg-white border border-r-0 border-slate-200 p-3 rounded-l-xl shadow-[-4px_0_10px_rgba(0,0,0,0.05)] z-10 hover:bg-slate-50 text-slate-500 transition-all ${!selectedId && nodes.length === 0 ? 'translate-x-full opacity-0' : 'opacity-100'}`}
+                title={isPanelOpen ? "패널 닫기" : "패널 열기"}
+              >
+                {isPanelOpen ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+              </button>
+            </div>
+
+            <div className={`bg-white border-l border-slate-200 shadow-[-10px_0_20px_-5px_rgba(0,0,0,0.05)] z-20 transition-all duration-300 flex flex-col ${isPanelOpen ? 'w-[400px]' : 'w-0 border-none'}`}>
+              <div className="w-[400px] flex flex-col h-full overflow-hidden">
+                {selectionType === 'node' && selectedNode ? (
+                  <div className="flex-1 flex flex-col min-h-0 overflow-y-auto bg-slate-50/30">
+                    <div className="p-6 border-b border-slate-200 bg-white shrink-0 relative">
+                      <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider mb-2 block">노드 속성 편집</span>
+                      
+                      <button onClick={() => addMemo(selectedNode.id)} className="absolute top-5 right-5 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-bold transition flex items-center">
+                        <PlusCircle size={14} className="mr-1"/> 메모 추가
+                      </button>
+
+                      <select 
+                        value={selectedNode.type}
+                        onChange={(e) => updateNodeType(selectedNode.id, e.target.value)}
+                        className="text-xs font-bold text-slate-500 uppercase tracking-wider bg-slate-100 hover:bg-slate-200 cursor-pointer rounded px-2 py-1 outline-none mb-3 border border-slate-200 transition"
+                      >
+                        <option value="Task">과제 (Task)</option>
+                        <option value="Data">데이터 (Data)</option>
+                        <option value="System">시스템 (System)</option>
+                        <option value="Law">국가법령 (Law)</option>
+                        <option value="Regulation">사내규정 (Regulation)</option>
+                        <option value="Guideline">지침 (Guideline)</option>
+                        <option value="Deliverable">산출물 (Deliverable)</option>
+                      </select>
+                      <input 
+                        type="text" value={selectedNode.label} onChange={(e) => updateNode(selectedNode.id, 'label', e.target.value)}
+                        className="w-full text-xl font-extrabold text-slate-800 bg-transparent border-b-2 border-dashed border-slate-300 focus:border-blue-500 outline-none pb-1.5 mb-4"
+                      />
+                      
+                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-inner">
+                        <label className="text-xs font-bold text-slate-700 block mb-1.5">진행 상태 (Status)</label>
+                        <select
+                          value={selectedNode.meta?.상태 || '미진행'}
+                          onChange={(e) => updateNodeMeta(selectedNode.id, '상태', e.target.value)}
+                          className="w-full text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 cursor-pointer transition"
+                        >
+                          <option value="미진행">미진행 (Not Started)</option>
+                          <option value="진행중">진행중 (In Progress)</option>
+                          <option value="보류">보류 (Pending)</option>
+                          <option value="완료">완료 (Completed)</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div className="p-6 space-y-5">
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-extrabold text-slate-800 border-b border-slate-200 pb-2">필수 메타데이터</h4>
+                        {Object.keys(defaultMeta[selectedNode.type]).filter(k => k !== '상태').map((key) => (
+                          <div key={key} className="flex flex-col space-y-1.5 group">
+                            <label className="text-xs font-bold text-slate-500 group-focus-within:text-blue-600 transition">{key}</label>
+                            {renderMetaInput(key, selectedNode.meta[key] || '', selectedNode.id)}
+                          </div>
+                        ))}
+                      </div>
+
+                      {Object.keys(selectedNode.meta).filter(k => !Object.keys(defaultMeta[selectedNode.type]).includes(k) && k !== '상태' && k !== '첨부파일').length > 0 && (
+                        <div className="space-y-4 pt-4 border-t border-slate-200">
+                          <h4 className="text-sm font-extrabold text-indigo-800 border-b border-indigo-100 pb-2 flex items-center">
+                            <FileText size={16} className="mr-1.5" /> 커스텀 메모장
+                          </h4>
+                          {Object.keys(selectedNode.meta)
+                            .filter(k => !Object.keys(defaultMeta[selectedNode.type]).includes(k) && k !== '상태' && k !== '첨부파일')
+                            .map(key => (
+                            <div key={key} className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 relative group">
+                              <input 
+                                type="text" 
+                                className="text-xs font-bold text-indigo-700 bg-transparent border-b border-indigo-200 outline-none mb-2 w-3/4 pb-0.5 focus:border-indigo-500" 
+                                value={key} 
+                                onChange={(e) => renameNodeMetaKey(selectedNode.id, key, e.target.value)}
+                                placeholder="메모 제목"
+                              />
+                              <button onClick={() => deleteNodeMetaKey(selectedNode.id, key)} className="absolute top-3 right-3 text-indigo-300 hover:text-red-500 bg-white rounded-full p-1 shadow-sm transition">
+                                <Trash2 size={12} />
+                              </button>
+                              <textarea 
+                                className="w-full text-sm text-slate-700 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-300 p-2.5 min-h-[80px] resize-y"
+                                value={selectedNode.meta[key]} 
+                                onChange={(e) => updateNodeMeta(selectedNode.id, key, e.target.value)} 
+                                placeholder="자유롭게 내용을 작성하세요."
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="pt-4 border-t border-slate-200">
+                        <h4 className="text-sm font-extrabold text-slate-800 mb-3 flex items-center">
+                          <Paperclip size={16} className="mr-1.5 text-slate-500" /> 파일 첨부 및 다운로드
+                        </h4>
+                        {selectedNode.meta?.첨부파일 ? (
+                          <div className="flex items-center justify-between bg-white border border-slate-300 shadow-sm p-3 rounded-xl text-sm font-bold text-slate-700">
+                            <span className="truncate flex-1 mr-3 text-blue-600">
+                              {selectedNode.meta.첨부파일.name || selectedNode.meta.첨부파일}
+                            </span>
+                            <div className="flex items-center space-x-1 shrink-0">
+                              {selectedNode.meta.첨부파일.url && (
+                                <a 
+                                  href={selectedNode.meta.첨부파일.url} 
+                                  download={selectedNode.meta.첨부파일.name}
+                                  className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition"
+                                  title="파일 다운로드"
+                                >
+                                  <Download size={16}/>
+                                </a>
+                              )}
+                              <button onClick={() => deleteNodeMetaKey(selectedNode.id, '첨부파일')} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition">
+                                <X size={16}/>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center w-full bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-6 text-sm text-slate-500 cursor-pointer hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 transition font-bold">
+                            <Paperclip size={24} className="mb-2 text-slate-400" />
+                            <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, selectedNode.id)} />
+                            PC에서 문서/파일 업로드
+                          </label>
+                        )}
+                      </div>
+
+                      <div className="pt-6 border-t border-slate-200 pb-10">
+                        <h4 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center">
+                          <Network size={16} className="text-blue-500 mr-1.5" /> 연결된 객체 현황
+                        </h4>
+                        {getConnectedObjects(selectedNode.id).length === 0 ? (
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                            <p className="text-xs text-slate-400 font-bold">현재 연결된 노드가 없습니다.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {getConnectedObjects(selectedNode.id).map((item, idx) => (
+                              <div key={idx} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 transition group">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-[10px] font-extrabold px-2.5 py-1 rounded text-white shadow-sm" style={{ backgroundColor: typeColors[item.node.type] }}>
+                                    {typeLabels[item.node.type]}
+                                  </span>
+                                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded border flex items-center ${item.edge.method !== 'manual' || item.edge.logic ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
+                                    {item.edge.method === 'manual' ? <Edit3 size={10} className="mr-1"/> : <Zap size={10} className="mr-1"/>}
+                                    {methodNames[item.edge.method]}
+                                  </span>
+                                </div>
+                                <div className="text-sm font-extrabold text-slate-800 truncate mb-1">{item.node.label}</div>
+                                {item.edge.method !== 'manual' && item.edge.logic && (
+                                  <div className="text-xs text-slate-500 mt-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 leading-snug">
+                                    {item.edge.logic}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : selectionType === 'edge' && selectedEdge ? (
+                  <div className="flex-1 flex flex-col bg-white">
+                    <div className="p-6 border-b border-slate-200 bg-slate-50 shrink-0">
+                      <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider mb-3 block">관계선(Link) 도출 방식 지정</span>
+                      
+                      <select
+                        value={selectedEdge.method || 'manual'} onChange={(e) => updateEdge(selectedEdge.id, 'method', e.target.value)}
+                        className="w-full text-base font-extrabold text-slate-800 bg-white border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none px-4 py-3 cursor-pointer shadow-sm transition"
+                      >
+                        <option value="manual">✋ 수동 입력 (No Rule)</option>
+                        <option disabled>────────── [ 데이터/AI 도출 ] ──────────</option>
+                        <option value="semantic">🧠 시맨틱 추론 (Semantic AI)</option>
+                        <option value="keyword">🔑 키워드 매칭 (Keyword Match)</option>
+                        <option value="cooccurrence">📄 문서 동시 출현 (Co-occurrence)</option>
+                        <option disabled>────────── [ 논리/구조 도출 ] ──────────</option>
+                        <option value="rule">⚡ 사전 룰 엔진 매핑 (Rule Engine)</option>
+                        <option value="inheritance">🕸️ 상위 속성 상속 (Inheritance)</option>
+                        <option value="transitive">🔗 네트워크 연쇄 추론 (Transitive)</option>
+                        <option disabled>────────── [ 행동/로그 도출 ] ──────────</option>
+                        <option value="log">📈 시스템 로그 분석 (Log Analytics)</option>
+                      </select>
+
+                      <button 
+                        onClick={() => reverseEdgeDirection(selectedEdge.id)} 
+                        className="mt-4 w-full bg-white border border-slate-300 hover:bg-slate-100 hover:border-slate-400 text-slate-700 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center transition shadow-sm"
+                      >
+                        <ArrowLeftRight size={16} className="mr-2 text-slate-500" /> 화살표 방향 반전 (Swap)
+                      </button>
+                    </div>
+
+                    <div className="p-6 flex-1 overflow-y-auto bg-white">
+                      {selectedEdge.method === 'manual' && (
+                        <div className="mb-6">
+                          <label className="text-sm font-extrabold text-slate-800 mb-2 block">수동 관계 명칭 타이핑</label>
+                          <input 
+                            type="text" value={selectedEdge.label || ''} onChange={(e) => updateEdge(selectedEdge.id, 'label', e.target.value)}
+                            placeholder="관계 직접 입력 (예: 확인용, 참조함)"
+                            className="w-full text-sm font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none p-3 shadow-sm transition"
+                          />
+                        </div>
+                      )}
+
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
+                        <div className="flex items-center mb-2">
+                          {methodIcons[selectedEdge.method]}
+                          <span className="text-sm font-extrabold text-slate-800">{methodNames[selectedEdge.method]} 설명</span>
+                        </div>
+                        <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                          {methodDescriptions[selectedEdge.method]}
+                        </p>
+                      </div>
+
+                      {selectedEdge.method !== 'manual' && (
+                        <div className="mt-8">
+                          <label className="text-sm font-extrabold text-slate-800 mb-3 flex items-center">
+                            <Settings size={16} className="mr-1.5 text-blue-500" /> 
+                            상세 규칙 및 세팅 로직 정의
+                          </label>
+                          <textarea
+                            value={selectedEdge.logic || ''}
+                            onChange={(e) => updateEdge(selectedEdge.id, 'logic', e.target.value)}
+                            placeholder={logicPlaceholders[selectedEdge.method]}
+                            className="w-full text-sm font-medium text-slate-800 border border-slate-300 rounded-xl p-4 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 outline-none min-h-[140px] resize-y shadow-sm bg-white transition leading-relaxed"
+                          />
+                          <p className="text-[10px] text-slate-500 mt-2 font-medium leading-relaxed bg-blue-50 p-2 rounded-lg">
+                            💡 이 규칙은 온톨로지 엔진이 노드를 자동으로 연결할 때 시스템 판단 기준(조건문, 임계치 등)으로 활용되며 규칙 존재 시 맵에서 선이 초록색으로 표시됩니다.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center space-y-4 bg-slate-50/50">
+                    <div className="bg-white p-4 rounded-full shadow-sm border border-slate-100"><Type size={32} className="text-slate-300" /></div>
+                    <p className="text-sm font-bold text-slate-500 leading-relaxed">맵에서 노드나 선을 클릭하면<br/>해당 객체의 속성을 편집할 수 있습니다.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {isAddModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-white rounded-2xl shadow-2xl w-[540px] overflow-hidden border border-slate-200">
+                <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                  <h3 className="font-extrabold text-lg text-slate-800">새로운 객체 추가</h3>
+                  <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-6">
+                  
+                  <h4 className="text-xs font-extrabold text-slate-400 mb-3 uppercase tracking-wide">프로젝트 / 과제</h4>
+                  <div className="grid grid-cols-1 mb-6">
+                     <button onClick={() => { addNode('Task'); setIsAddModalOpen(false); }} className="flex items-center p-4 border border-slate-200 rounded-xl hover:border-blue-500 hover:shadow-lg transition text-left bg-white group">
+                        <div className="bg-blue-50 p-3 rounded-xl mr-4 group-hover:bg-blue-100 transition"><Briefcase size={20} className="text-blue-600"/></div>
+                        <div><div className="text-sm font-extrabold text-slate-800 mb-0.5">과제 (Task)</div><div className="text-xs text-slate-500 font-medium">최상위 프로젝트, 단위 업무, AX 과제 등</div></div>
+                     </button>
+                  </div>
+
+                  <h4 className="text-xs font-extrabold text-slate-400 mb-3 uppercase tracking-wide">구조형 객체 (데이터/시스템)</h4>
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                     <button onClick={() => { addNode('Data'); setIsAddModalOpen(false); }} className="flex flex-col items-center p-5 border border-slate-200 rounded-xl hover:border-sky-500 hover:shadow-lg transition text-center bg-white group">
+                        <div className="bg-sky-50 p-3 rounded-xl mb-3 group-hover:bg-sky-100 transition"><Database size={24} className="text-sky-600"/></div>
+                        <div className="text-sm font-extrabold text-slate-800 mb-1">데이터 (Data)</div>
+                        <div className="text-[10px] text-slate-500 font-medium">DB, 테이블, 정형 데이터</div>
+                     </button>
+                     <button onClick={() => { addNode('System'); setIsAddModalOpen(false); }} className="flex flex-col items-center p-5 border border-slate-200 rounded-xl hover:border-indigo-500 hover:shadow-lg transition text-center bg-white group">
+                        <div className="bg-indigo-50 p-3 rounded-xl mb-3 group-hover:bg-indigo-100 transition"><Monitor size={24} className="text-indigo-600"/></div>
+                        <div className="text-sm font-extrabold text-slate-800 mb-1">시스템 (System)</div>
+                        <div className="text-[10px] text-slate-500 font-medium">내부/외부 IT 인프라</div>
+                     </button>
+                  </div>
+
+                  <h4 className="text-xs font-extrabold text-slate-400 mb-3 uppercase tracking-wide">문서형 객체 (가이드/규정)</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                     <button onClick={() => { addNode('Law'); setIsAddModalOpen(false); }} className="flex items-center p-3 border border-slate-200 rounded-xl hover:border-red-500 hover:shadow-md transition text-left bg-white group">
+                        <div className="bg-red-50 p-2.5 rounded-lg mr-3 group-hover:bg-red-100 transition"><Scale size={16} className="text-red-600"/></div>
+                        <div><div className="text-xs font-extrabold text-slate-800">국가법령 (Law)</div><div className="text-[10px] text-slate-500 mt-0.5 font-medium">외부 법적 구속력</div></div>
+                     </button>
+                     <button onClick={() => { addNode('Regulation'); setIsAddModalOpen(false); }} className="flex items-center p-3 border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-md transition text-left bg-white group">
+                        <div className="bg-blue-50 p-2.5 rounded-lg mr-3 group-hover:bg-blue-100 transition"><ShieldCheck size={16} className="text-blue-600"/></div>
+                        <div><div className="text-xs font-extrabold text-slate-800">사내규정 (Regulation)</div><div className="text-[10px] text-slate-500 mt-0.5 font-medium">내부 운영 기준</div></div>
+                     </button>
+                     <button onClick={() => { addNode('Guideline'); setIsAddModalOpen(false); }} className="flex items-center p-3 border border-slate-200 rounded-xl hover:border-sky-400 hover:shadow-md transition text-left bg-white group">
+                        <div className="bg-sky-50 p-2.5 rounded-lg mr-3 group-hover:bg-sky-100 transition"><BookOpen size={16} className="text-sky-600"/></div>
+                        <div><div className="text-xs font-extrabold text-slate-800">지침 (Guideline)</div><div className="text-[10px] text-slate-500 mt-0.5 font-medium">매뉴얼, 가이드</div></div>
+                     </button>
+                     <button onClick={() => { addNode('Deliverable'); setIsAddModalOpen(false); }} className="flex items-center p-3 border border-slate-200 rounded-xl hover:border-sky-300 hover:shadow-md transition text-left bg-white group">
+                        <div className="bg-sky-50 p-2.5 rounded-lg mr-3 group-hover:bg-sky-100 transition"><ClipboardCheck size={16} className="text-sky-500"/></div>
+                        <div><div className="text-xs font-extrabold text-slate-800">산출물 (Deliverable)</div><div className="text-[10px] text-slate-500 mt-0.5 font-medium">보고서, 양식 등</div></div>
+                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const AdminView = ({ users, onAddUser, onUpdateUser, onDeleteUser }) => {
+      const [editingUser, setEditingUser] = useState(null);
+
+      const handleSave = (e) => {
+        e.preventDefault();
+        if (editingUser.isNew) {
+          const newUser = { ...editingUser };
+          delete newUser.isNew;
+          delete newUser.originalId;
+          const success = onAddUser(newUser);
+          if (success !== false) setEditingUser(null);
+        } else {
+          const updated = { ...editingUser };
+          delete updated.originalId;
+          const success = onUpdateUser(updated, editingUser.originalId);
+          if (success !== false) setEditingUser(null);
+        }
+      };
+
+      const handleAddClick = () => {
+        setEditingUser({ id: '', pw: '', name: '', dept: '', role: 'Editor', needPwChange: true, isNew: true });
+      };
+
+      return (
+        <div className="max-w-5xl mx-auto space-y-6 relative">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-slate-800">사용자 계정 및 권한 관리</h2>
+            <button onClick={handleAddClick} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-blue-700 flex items-center shadow-md transition">
+              <Plus size={16} className="mr-2" /> 신규 계정 추가
+            </button>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-slate-600 border-b">
+                <tr>
+                  <th className="px-6 py-4 font-bold">ID (사번)</th>
+                  <th className="px-6 py-4 font-bold">이름</th>
+                  <th className="px-6 py-4 font-bold">소속 부서</th>
+                  <th className="px-6 py-4 font-bold">시스템 권한</th>
+                  <th className="px-6 py-4 font-bold">계정 상태</th>
+                  <th className="px-6 py-4 font-bold text-right">관리</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {users.map(u => (
+                  <tr key={u.id} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-4 font-extrabold text-slate-800">{u.id}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center font-bold text-slate-700">
+                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs mr-3 shadow-sm">
+                          {u.name.charAt(0)}
+                        </div>
+                        {u.name}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-slate-500 font-medium">{u.dept}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-md text-xs font-bold shadow-sm border ${u.role === 'System Admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {u.needPwChange ? 
+                        <span className="text-amber-500 font-bold text-xs flex items-center"><AlertCircle size={14} className="mr-1"/>비번 변경 대기</span> : 
+                        <span className="text-blue-500 font-bold text-xs flex items-center"><CheckCircle size={14} className="mr-1"/>활성</span>
+                      }
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => setEditingUser({...u, originalId: u.id})} className="text-blue-600 hover:text-blue-800 font-bold text-xs mr-3 transition">수정</button>
+                      <button onClick={() => onDeleteUser(u.id)} className="text-red-500 hover:text-red-700 font-bold text-xs transition disabled:opacity-30" disabled={u.id==='admin'}>삭제</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {editingUser && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
+                <h3 className="text-lg font-extrabold mb-6 text-slate-800 border-b pb-3">{editingUser.isNew ? '신규 계정 추가' : '계정 정보 수정'}</h3>
+                <form onSubmit={handleSave} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">ID (사번/계정명)</label>
+                    <input 
+                      type="text" value={editingUser.id} 
+                      onChange={e => {
+                        if (editingUser.isNew) {
+                          setEditingUser({...editingUser, id: e.target.value, pw: e.target.value});
+                        } else {
+                          setEditingUser({...editingUser, id: e.target.value});
+                        }
+                      }} 
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium disabled:opacity-50 disabled:bg-slate-50" 
+                      placeholder="사번 입력 (초기 비밀번호와 동일)" required
+                      disabled={editingUser.originalId === 'admin'}
+                    />
+                    {editingUser.originalId === 'admin' && <p className="text-[10px] text-red-500 mt-1">최고 관리자 ID는 변경할 수 없습니다.</p>}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">이름</label>
+                    <input 
+                      type="text" value={editingUser.name} 
+                      onChange={e => setEditingUser({...editingUser, name: e.target.value})} 
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">소속 부서</label>
+                    <input 
+                      type="text" value={editingUser.dept} 
+                      onChange={e => setEditingUser({...editingUser, dept: e.target.value})} 
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">시스템 권한 (Role)</label>
+                    <select 
+                      value={editingUser.role} 
+                      onChange={e => setEditingUser({...editingUser, role: e.target.value})} 
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                    >
+                      <option value="System Admin">System Admin (전체 권한)</option>
+                      <option value="Editor">Editor (편집자)</option>
+                      <option value="Viewer">Viewer (조회 전용)</option>
+                    </select>
+                  </div>
+                  
+                  {!editingUser.isNew && (
+                    <div className="flex items-center pt-2 bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
+                      <input 
+                        type="checkbox" id="pwReset" 
+                        checked={editingUser.needPwChange} 
+                        onChange={e => setEditingUser({...editingUser, needPwChange: e.target.checked, pw: editingUser.id})} 
+                        className="mr-2" 
+                      />
+                      <label htmlFor="pwReset" className="text-xs font-bold text-slate-700 cursor-pointer leading-tight">
+                        비밀번호 초기화<br/><span className="text-[10px] text-slate-500 font-medium">(사번으로 초기화 및 강제 변경 상태로 전환)</span>
+                      </label>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end space-x-2 mt-8 pt-4 border-t border-slate-100">
+                    <button 
+                      type="button" onClick={() => setEditingUser(null)} 
+                      className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition"
+                    >
+                      취소
+                    </button>
+                    <button 
+                      type="submit" 
+                      className="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition shadow-md"
+                    >
+                      저장
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<TaskOntologyApp />);
   </script>
 </body>
 </html>
