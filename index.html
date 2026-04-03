@@ -10,25 +10,26 @@ import {
 } from 'lucide-react';
 
 // --- [Default Meta Attributes based on Schema] ---
+// 모든 노드에 '담당자' 필드 일괄 추가
 const defaultMeta = {
   Task: { 상태: '미진행', 목적: '', 담당자: '', 시작일: '', 종료일: '' },
-  Data: { 상태: '미진행', 데이터셋명: '', 데이터형태: '', 갱신주기: '', 접근권한: '' }, 
-  System: { 상태: '미진행', 시스템명: '', URL: '', 운영부서: '', 데이터셋명: '', 데이터형태: '', 접근권한: '' }, 
-  Law: { 상태: '미진행', 국가법령명: '', 시행일: '', 소관부처: '', 조항: '', 원문링크: '' },
-  Regulation: { 상태: '미진행', 사내규정명: '', 시행일: '', 주관부서: '', 조항: '', 원문링크: '' },
-  Guideline: { 상태: '미진행', 매뉴얼명: '', 버전: '', 작성자: '', 원문파일: '' },
-  Deliverable: { 상태: '미진행', 산출물명: '', 확장자: '', 생성일: '', 승인자: '' }
+  Data: { 상태: '미진행', 담당자: '', 데이터셋명: '', 데이터형태: '', 갱신주기: '', 접근권한: '' }, 
+  System: { 상태: '미진행', 담당자: '', 시스템명: '', URL: '', 운영부서: '', 데이터셋명: '', 데이터형태: '', 접근권한: '' }, 
+  Law: { 상태: '미진행', 담당자: '', 국가법령명: '', 시행일: '', 소관부처: '', 조항: '', 원문링크: '' },
+  Regulation: { 상태: '미진행', 담당자: '', 사내규정명: '', 시행일: '', 주관부서: '', 조항: '', 원문링크: '' },
+  Guideline: { 상태: '미진행', 담당자: '', 매뉴얼명: '', 버전: '', 작성자: '', 원문파일: '' },
+  Deliverable: { 상태: '미진행', 담당자: '', 산출물명: '', 확장자: '', 생성일: '', 승인자: '' }
 };
 
-// 파란색 계열 테마 적용 (세련된 톤)
+// 파란색 계열 테마 적용
 const typeColors = {
-  Task: '#2563eb',       // Blue
-  Data: '#0ea5e9',       // Sky Blue
-  System: '#6366f1',     // Indigo
-  Law: '#1e3a8a',        // Dark Blue
-  Regulation: '#0284c7', // Light Blue
-  Guideline: '#38bdf8',  // Lighter Blue
-  Deliverable: '#93c5fd' // Pale Blue
+  Task: '#2563eb',       
+  Data: '#0ea5e9',       
+  System: '#6366f1',     
+  Law: '#1e3a8a',        
+  Regulation: '#0284c7', 
+  Guideline: '#38bdf8',  
+  Deliverable: '#93c5fd' 
 };
 
 const typeLabels = {
@@ -79,7 +80,6 @@ const methodIcons = {
   log: <Activity size={16} className="text-cyan-600 mr-2" />
 };
 
-// 데이터 형태 가이드 딕셔너리
 const dataTypeGuides = {
   '관계형DB (RDB)': '정형화된 테이블 구조의 데이터베이스 (예: MySQL, Oracle)',
   'NoSQL': '유연한 스키마를 가진 비정형 데이터베이스 (예: MongoDB)',
@@ -89,10 +89,11 @@ const dataTypeGuides = {
   '문서 (PDF/Word)': '텍스트 위주의 비정형 산출물 문서'
 };
 
-const mockUsers = [
-  { id: 'admin', name: '최고 관리자', role: 'System Admin', dept: '인사/조직문화팀', needPwChange: false },
-  { id: 'user1', name: '김HR', role: 'Editor', dept: 'HRD팀', needPwChange: false },
-  { id: 'user2', name: '이IT', role: 'Editor', dept: 'IT지원팀', needPwChange: false }
+// 비밀번호(pw) 필드가 추가된 초기 사용자 목록
+const defaultMockUsers = [
+  { id: 'admin', pw: 'admin', name: '최고 관리자', role: 'System Admin', dept: '인사/조직문화팀', needPwChange: false },
+  { id: 'user1', pw: 'user1', name: '김HR', role: 'Editor', dept: 'HRD팀', needPwChange: false },
+  { id: 'user2', pw: 'user2', name: '이IT', role: 'Editor', dept: 'IT지원팀', needPwChange: false }
 ];
 
 // --- [Components] ---
@@ -110,12 +111,131 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
+const DataFormatInput = ({ val, nodeId, updateNodeMeta }) => {
+  const isCustom = val && !Object.keys(dataTypeGuides).includes(val);
+  const [mode, setMode] = useState(isCustom ? 'custom' : 'select');
+
+  const handleSelect = (e) => {
+    if (e.target.value === 'custom') {
+      setMode('custom');
+      updateNodeMeta(nodeId, '데이터형태', '');
+    } else {
+      setMode('select');
+      updateNodeMeta(nodeId, '데이터형태', e.target.value);
+    }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <select 
+        className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-bold text-slate-700 cursor-pointer transition" 
+        value={mode === 'custom' ? 'custom' : val} 
+        onChange={handleSelect}
+      >
+        <option value="">형태 선택...</option>
+        {Object.keys(dataTypeGuides).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+        <option value="custom">직접 입력 (목록에 없음)</option>
+      </select>
+      
+      {mode === 'custom' && (
+         <input 
+           type="text" 
+           className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-medium mt-1" 
+           value={val} onChange={(e) => updateNodeMeta(nodeId, '데이터형태', e.target.value)} 
+           placeholder="원하는 데이터 형태를 직접 입력하세요" 
+         />
+      )}
+      
+      {mode === 'select' && val && dataTypeGuides[val] && (
+        <p className="text-[10px] text-slate-500 font-medium bg-slate-100 p-1.5 rounded">💡 {dataTypeGuides[val]}</p>
+      )}
+    </div>
+  );
+};
+
 export default function TaskOntologyApp() {
-  const [currentUser] = useState(mockUsers[0]);
-  const [usersDb] = useState(mockUsers); 
-  const [currentView, setCurrentView] = useState('map'); 
+  const [usersDb, setUsersDb] = useState(() => {
+    const saved = localStorage.getItem('ontologyUsersDB');
+    return saved ? JSON.parse(saved) : defaultMockUsers;
+  });
+  
+  const [currentUser, setCurrentUser] = useState(null);
+  const [currentView, setCurrentView] = useState('login'); 
   const [toast, setToast] = useState(null);
+  const [isAnytimePwModalOpen, setIsAnytimePwModalOpen] = useState(false);
+
   const showToast = (msg, type = 'success') => setToast({ message: msg, type });
+
+  // 유저 정보 저장 함수 (로컬스토리지 연동)
+  const saveUsersToDb = (newUsers) => {
+    setUsersDb(newUsers);
+    localStorage.setItem('ontologyUsersDB', JSON.stringify(newUsers));
+  };
+
+  const handleLogin = (id, pw) => {
+    const user = usersDb.find(u => u.id === id);
+    if (user && user.pw === pw) {
+      setCurrentUser(user);
+      if (user.needPwChange) {
+        setCurrentView('pwChange');
+      } else {
+        setCurrentView('dashboard');
+      }
+      showToast(`${user.name}님 환영합니다!`);
+    } else {
+      showToast('ID(사번) 또는 비밀번호가 일치하지 않습니다.', 'error');
+    }
+  };
+
+  const handlePasswordChangeSubmit = (newPw) => {
+    const updatedUsers = usersDb.map(u => u.id === currentUser.id ? { ...u, pw: newPw, needPwChange: false } : u);
+    saveUsersToDb(updatedUsers);
+    setCurrentUser({ ...currentUser, pw: newPw, needPwChange: false });
+    setCurrentView('dashboard');
+    showToast('비밀번호가 성공적으로 변경되었습니다.');
+    setIsAnytimePwModalOpen(false);
+  };
+
+  // 최고 관리자용 계정 관리 함수들
+  const handleAddUser = (newUser) => {
+    if (usersDb.find(u => u.id === newUser.id)) {
+      showToast('이미 존재하는 ID(사번)입니다.', 'error');
+      return false;
+    }
+    saveUsersToDb([...usersDb, newUser]);
+    showToast('신규 계정이 추가되었습니다.');
+    return true;
+  };
+
+  const handleUpdateUser = (updatedUser, originalId = updatedUser.id) => {
+    if (originalId !== updatedUser.id && usersDb.find(u => u.id === updatedUser.id)) {
+      showToast('이미 존재하는 ID(사번)입니다.', 'error');
+      return false;
+    }
+    const updatedList = usersDb.map(u => u.id === originalId ? updatedUser : u);
+    saveUsersToDb(updatedList);
+    if (currentUser.id === originalId) setCurrentUser(updatedUser);
+    showToast('계정 정보가 성공적으로 반영되었습니다.');
+    return true;
+  };
+
+  const handleDeleteUser = (userId) => {
+    if (userId === 'admin') {
+      showToast('최고 관리자 계정은 삭제할 수 없습니다.', 'error');
+      return;
+    }
+    saveUsersToDb(usersDb.filter(u => u.id !== userId));
+    showToast('계정이 삭제되었습니다.');
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setCurrentView('login');
+    showToast('로그아웃 되었습니다.');
+  };
+
+  if (currentView === 'login') return <LoginView onLogin={handleLogin} />;
+  if (currentView === 'pwChange') return <PasswordChangeView onSubmit={handlePasswordChangeSubmit} />;
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-800 selection:bg-blue-200">
@@ -131,15 +251,25 @@ export default function TaskOntologyApp() {
             <NavItem icon={<Users />} label="계정/권한 관리" active={currentView === 'admin'} onClick={() => setCurrentView('admin')} />
           )}
         </nav>
-        <div className="p-4 border-t border-slate-800 bg-slate-950 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold shadow-inner">
-              {currentUser?.name.charAt(0)}
+        <div className="p-4 border-t border-slate-800 bg-slate-950 flex flex-col space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold shadow-inner">
+                {currentUser?.name.charAt(0)}
+              </div>
+              <div className="text-sm">
+                <p className="text-white font-bold">{currentUser?.name}</p>
+                <p className="text-[10px] text-blue-300">{currentUser?.role}</p>
+              </div>
             </div>
-            <div className="text-sm">
-              <p className="text-white font-bold">{currentUser?.name}</p>
-              <p className="text-[10px] text-blue-300">{currentUser?.role}</p>
-            </div>
+          </div>
+          <div className="flex items-center space-x-2 pt-2 border-t border-slate-800">
+            <button onClick={() => setIsAnytimePwModalOpen(true)} className="flex-1 flex items-center justify-center px-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-bold transition">
+              <Settings size={14} className="mr-1.5" /> 비밀번호
+            </button>
+            <button onClick={handleLogout} className="flex-1 flex items-center justify-center px-2 py-1.5 bg-red-900/30 hover:bg-red-800/50 text-red-300 rounded text-xs font-bold transition">
+              <LogOut size={14} className="mr-1.5" /> 로그아웃
+            </button>
           </div>
         </div>
       </aside>
@@ -159,8 +289,24 @@ export default function TaskOntologyApp() {
           )}
         </header>
 
-        <MapAndDashboardContainer currentView={currentView} setCurrentView={setCurrentView} showToast={showToast} currentUser={currentUser} usersDb={usersDb} />
+        <MapAndDashboardContainer 
+          currentView={currentView} 
+          setCurrentView={setCurrentView} 
+          showToast={showToast} 
+          currentUser={currentUser} 
+          usersDb={usersDb} 
+          onAddUser={handleAddUser}
+          onUpdateUser={handleUpdateUser}
+          onDeleteUser={handleDeleteUser}
+        />
       </main>
+      
+      {isAnytimePwModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+           <PasswordChangeForm onClose={() => setIsAnytimePwModalOpen(false)} onSubmit={handlePasswordChangeSubmit} currentPwReq={true} userPw={currentUser.pw} />
+        </div>
+      )}
+
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
@@ -178,47 +324,169 @@ const NavItem = ({ icon, label, active, onClick }) => (
   </button>
 );
 
-const MapAndDashboardContainer = ({ currentView, setCurrentView, showToast, currentUser, usersDb }) => {
-  const [nodes, setNodes] = useState([]);
-  const [edges, setEdges] = useState([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+const LoginView = ({ onLogin }) => {
+  const [id, setId] = useState('');
+  const [pw, setPw] = useState('');
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <div className="bg-white p-10 rounded-2xl shadow-2xl w-[400px]">
+        <div className="flex justify-center mb-6">
+          <div className="bg-blue-600 p-4 rounded-2xl text-white shadow-lg"><Network size={40} /></div>
+        </div>
+        <h2 className="text-2xl font-extrabold text-center text-slate-800 mb-2">온톨로지 맵 시스템</h2>
+        <p className="text-center text-sm text-slate-500 mb-8 font-medium">관리자가 발급한 사번과 비밀번호로 로그인하세요.</p>
+        <div className="space-y-5">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-1.5">ID (사번)</label>
+            <input 
+              type="text" value={id} onChange={e => setId(e.target.value)} 
+              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition font-medium" 
+              placeholder="사번을 입력하세요" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-1.5">비밀번호</label>
+            <input 
+              type="password" value={pw} onChange={e => setPw(e.target.value)} 
+              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition font-medium" 
+              placeholder="••••••••" 
+              onKeyDown={e => e.key === 'Enter' && onLogin(id, pw)}
+            />
+          </div>
+          <button 
+            onClick={() => onLogin(id, pw)} 
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-extrabold hover:bg-blue-700 transition-colors mt-2 shadow-md"
+          >
+            로그인
+          </button>
+        </div>
+        <div className="mt-8 text-center text-xs text-slate-400 font-medium bg-slate-50 p-3 rounded-lg">
+          * 최초 접속 시 ID와 비밀번호는 동일하게 발급됩니다.<br/>
+          * 기본 관리자 계정: admin / admin<br/>
+          * 계정 발급 문의: 인사/조직문화팀
+        </div>
+      </div>
+    </div>
+  );
+};
 
-  useEffect(() => {
-    const saved = localStorage.getItem('ontologyMapDB');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setNodes(parsed.nodes || []);
-        setEdges(parsed.edges || []);
-      } catch(e) { console.error(e); }
+const PasswordChangeView = ({ onSubmit }) => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-100">
+    <PasswordChangeForm onClose={null} onSubmit={onSubmit} currentPwReq={false} />
+  </div>
+);
+
+const PasswordChangeForm = ({ onClose, onSubmit, currentPwReq, userPw }) => {
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = () => {
+    if (currentPwReq && currentPw !== userPw) {
+      setError('현재 비밀번호가 일치하지 않습니다.'); return;
     }
-    setIsLoaded(true);
-  }, []);
-
-  const handleSaveMap = () => {
-    localStorage.setItem('ontologyMapDB', JSON.stringify({ nodes, edges }));
-    showToast('맵 구조가 안전하게 저장되었습니다.', 'success');
+    if (newPw.length < 4) {
+      setError('새 비밀번호는 4자리 이상이어야 합니다.'); return;
+    }
+    if (newPw !== confirmPw) {
+      setError('새 비밀번호와 확인이 일치하지 않습니다.'); return;
+    }
+    onSubmit(newPw);
   };
 
-  if (!isLoaded) return null;
+  return (
+    <div className="bg-white p-8 rounded-2xl shadow-2xl w-[400px] border-t-4 border-amber-500 relative">
+      {onClose && (
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X size={20}/></button>
+      )}
+      <div className="flex items-center space-x-2 mb-6">
+        <Lock className="text-amber-500" size={28} />
+        <h2 className="text-xl font-extrabold text-slate-800">비밀번호 변경</h2>
+      </div>
+      <p className="text-sm text-slate-600 mb-6 font-medium leading-relaxed">
+        보안을 위해 비밀번호를 변경해 주세요. 변경된 비밀번호로 즉시 로그인 상태가 유지됩니다.
+      </p>
+      <div className="space-y-4">
+        {currentPwReq && (
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1">현재 비밀번호</label>
+            <input type="password" value={currentPw} onChange={e=>setCurrentPw(e.target.value)} className="w-full px-4 py-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 font-medium" />
+          </div>
+        )}
+        <div>
+          <label className="block text-xs font-bold text-slate-600 mb-1">새 비밀번호</label>
+          <input type="password" value={newPw} onChange={e=>setNewPw(e.target.value)} className="w-full px-4 py-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 font-medium" />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-600 mb-1">새 비밀번호 확인</label>
+          <input type="password" value={confirmPw} onChange={e=>setConfirmPw(e.target.value)} className="w-full px-4 py-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 font-medium" />
+        </div>
+        
+        {error && <p className="text-xs font-bold text-red-500 bg-red-50 p-2 rounded">{error}</p>}
+        
+        <button onClick={handleSubmit} className="w-full bg-amber-500 text-white py-3 rounded-lg font-extrabold hover:bg-amber-600 shadow-md mt-2 transition">
+          변경 완료 및 저장
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const MapAndDashboardContainer = ({ currentView, setCurrentView, showToast, currentUser, usersDb, onAddUser, onUpdateUser, onDeleteUser }) => {
+  // 실시간 동기화 초기화: 맵/대시보드 공통 데이터
+  const [nodes, setNodes] = useState(() => {
+    const saved = localStorage.getItem('ontologyMapDB');
+    return saved ? JSON.parse(saved).nodes || [] : [];
+  });
+  const [edges, setEdges] = useState(() => {
+    const saved = localStorage.getItem('ontologyMapDB');
+    return saved ? JSON.parse(saved).edges || [] : [];
+  });
+
+  // 데이터가 변경될 때마다(노드 생성/편집, 선 연결 등) 백그라운드 자동 저장 구현
+  useEffect(() => {
+    try {
+      localStorage.setItem('ontologyMapDB', JSON.stringify({ nodes, edges }));
+    } catch (error) {
+      console.error("Auto-save failed", error);
+    }
+  }, [nodes, edges]);
+
+  // 수동 저장 액션 (사용자에게 저장되었다는 피드백을 주기 위함)
+  const handleSaveMap = () => {
+    try {
+      localStorage.setItem('ontologyMapDB', JSON.stringify({ nodes, edges }));
+      showToast('맵 구조가 안전하게 저장되었습니다.', 'success');
+    } catch(e) {
+      showToast('저장 공간(용량) 부족으로 실패했습니다.', 'error');
+    }
+  };
 
   return (
     <div className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50/50">
       {currentView === 'dashboard' && <DashboardView onNavMap={() => setCurrentView('map')} nodes={nodes} edges={edges} currentUser={currentUser} />}
       {currentView === 'map' && <MapView nodes={nodes} setNodes={setNodes} edges={edges} setEdges={setEdges} handleSaveMap={handleSaveMap} showToast={showToast} users={usersDb} />}
+      {currentView === 'admin' && <AdminView users={usersDb} onAddUser={onAddUser} onUpdateUser={onUpdateUser} onDeleteUser={onDeleteUser} />}
     </div>
   );
 };
 
 const DashboardView = ({ onNavMap, nodes, edges, currentUser }) => {
+  // 1. 담당자 현황
   const myNodes = nodes.filter(n => n.meta?.담당자?.includes(currentUser.name) || n.meta?.접근권한?.includes(currentUser.name));
   const myEdgesCount = edges.filter(e => myNodes.some(n => n.id === e.source || n.id === e.target)).length;
 
+  // 2. 전체 객체 연결 현황
+  const connectedNodes = nodes.filter(n => edges.some(e => e.source === n.id || e.target === n.id));
+  const connectedTaskCount = connectedNodes.filter(n => n.type === 'Task').length;
+  const connectedDataCount = connectedNodes.filter(n => n.type === 'Data').length;
+  const connectedSystemCount = connectedNodes.filter(n => n.type === 'System').length;
+  const connectedDocCount = connectedNodes.filter(n => ['Law', 'Regulation', 'Guideline', 'Deliverable'].includes(n.type)).length;
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-800">나의 현황 요약</h2>
-      </div>
+      <h2 className="text-lg font-bold text-slate-800">나의 담당 현황</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-2xl shadow-lg flex flex-col justify-between text-white relative overflow-hidden">
           <div className="absolute -right-4 -top-4 opacity-20"><Briefcase size={120} /></div>
@@ -232,7 +500,27 @@ const DashboardView = ({ onNavMap, nodes, edges, currentUser }) => {
         </div>
       </div>
 
-      <h2 className="text-lg font-bold text-slate-800 mt-8">전체 온톨로지 품질 모니터링</h2>
+      <h2 className="text-lg font-bold text-slate-800 mt-8">전체 객체 연결 현황 (온톨로지 맵)</h2>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+          <p className="text-sm text-slate-500 font-bold">전체 연결된 객체</p>
+          <div className="text-3xl font-extrabold text-blue-600 mt-2">{connectedNodes.length}<span className="text-sm font-medium text-slate-400 ml-1">개</span></div>
+        </div>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+          <p className="text-sm text-slate-500 font-bold">연결된 과제 (Task)</p>
+          <div className="text-3xl font-extrabold text-slate-800 mt-2">{connectedTaskCount}<span className="text-sm font-medium text-slate-400 ml-1">개</span></div>
+        </div>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+          <p className="text-sm text-slate-500 font-bold">연결된 데이터 (Data)</p>
+          <div className="text-3xl font-extrabold text-slate-800 mt-2">{connectedDataCount}<span className="text-sm font-medium text-slate-400 ml-1">개</span></div>
+        </div>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+          <p className="text-sm text-slate-500 font-bold">연결된 문서/시스템</p>
+          <div className="text-3xl font-extrabold text-slate-800 mt-2">{connectedSystemCount + connectedDocCount}<span className="text-sm font-medium text-slate-400 ml-1">개</span></div>
+        </div>
+      </div>
+
+      <h2 className="text-lg font-bold text-slate-800 mt-8">데이터 품질 모니터링</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
           <p className="text-sm text-slate-500 font-bold">전체 등록 노드</p>
@@ -454,8 +742,17 @@ const MapView = ({ nodes, setNodes, edges, setEdges, handleSaveMap, showToast, u
   const handleFileUpload = (e, nodeId) => {
     const file = e.target.files[0];
     if (file) {
-      updateNodeMeta(nodeId, '첨부파일', file.name);
-      showToast(`${file.name} 파일이 첨부되었습니다.`);
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('파일 크기가 너무 큽니다. 프로토타입 환경에서는 2MB 이하의 파일만 허용됩니다.', 'error');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const fileData = { name: file.name, url: event.target.result };
+        updateNodeMeta(nodeId, '첨부파일', fileData);
+        showToast(`[${file.name}] 파일이 안전하게 첨부 및 저장되었습니다.`);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -468,7 +765,6 @@ const MapView = ({ nodes, setNodes, edges, setEdges, handleSaveMap, showToast, u
     }).filter(item => item.node); 
   };
 
-  // 일반 입력 폼 렌더링 로직 (오류 픽스를 위해 HTML datalist 사용)
   const renderMetaInput = (key, val, nodeId) => {
     const isUrl = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('www') || val.startsWith('link.'));
 
@@ -514,20 +810,7 @@ const MapView = ({ nodes, setNodes, edges, setEdges, handleSaveMap, showToast, u
 
     if (key === '데이터형태') {
       return (
-        <div className="space-y-1.5">
-          <input 
-            list={`data-types-${nodeId}`}
-            className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-medium transition text-slate-800" 
-            value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
-            placeholder="목록에서 선택하거나 직접 입력하세요"
-          />
-          <datalist id={`data-types-${nodeId}`}>
-            {Object.keys(dataTypeGuides).map(opt => <option key={opt} value={opt} />)}
-          </datalist>
-          {val && dataTypeGuides[val] && (
-            <p className="text-[10px] text-slate-500 font-medium bg-slate-100 p-1.5 rounded">💡 {dataTypeGuides[val]}</p>
-          )}
-        </div>
+        <DataFormatInput key={`df_${nodeId}`} val={val} nodeId={nodeId} updateNodeMeta={updateNodeMeta} />
       );
     }
 
@@ -803,17 +1086,31 @@ const MapView = ({ nodes, setNodes, edges, setEdges, handleSaveMap, showToast, u
 
                   <div className="pt-4 border-t border-slate-200">
                     <h4 className="text-sm font-extrabold text-slate-800 mb-3 flex items-center">
-                      <Paperclip size={16} className="mr-1.5 text-slate-500" /> 파일 첨부
+                      <Paperclip size={16} className="mr-1.5 text-slate-500" /> 파일 첨부 및 다운로드
                     </h4>
                     {selectedNode.meta?.첨부파일 ? (
                       <div className="flex items-center justify-between bg-white border border-slate-300 shadow-sm p-3 rounded-xl text-sm font-bold text-slate-700">
-                        <span className="truncate flex-1 mr-3">{selectedNode.meta.첨부파일}</span>
-                        <button onClick={() => deleteNodeMetaKey(selectedNode.id, '첨부파일')} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition">
-                          <X size={16}/>
-                        </button>
+                        <span className="truncate flex-1 mr-3 text-blue-600">
+                          {selectedNode.meta.첨부파일.name || selectedNode.meta.첨부파일}
+                        </span>
+                        <div className="flex items-center space-x-1 shrink-0">
+                          {selectedNode.meta.첨부파일.url && (
+                            <a 
+                              href={selectedNode.meta.첨부파일.url} 
+                              download={selectedNode.meta.첨부파일.name}
+                              className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition"
+                              title="파일 다운로드"
+                            >
+                              <Download size={16}/>
+                            </a>
+                          )}
+                          <button onClick={() => deleteNodeMetaKey(selectedNode.id, '첨부파일')} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition">
+                            <X size={16}/>
+                          </button>
+                        </div>
                       </div>
                     ) : (
-                      <label className="flex flex-col items-center justify-center w-full bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-6 text-sm text-slate-500 cursor-pointer hover:bg-slate-100 hover:border-blue-400 transition font-bold">
+                      <label className="flex flex-col items-center justify-center w-full bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-6 text-sm text-slate-500 cursor-pointer hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 transition font-bold">
                         <Paperclip size={24} className="mb-2 text-slate-400" />
                         <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, selectedNode.id)} />
                         PC에서 문서/파일 업로드
@@ -995,3 +1292,169 @@ const MapView = ({ nodes, setNodes, edges, setEdges, handleSaveMap, showToast, u
     </div>
   );
 }
+
+// --- Admin View ---
+const AdminView = ({ users, onAddUser, onUpdateUser, onDeleteUser }) => {
+  const [editingUser, setEditingUser] = useState(null);
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    if (editingUser.isNew) {
+      const newUser = { ...editingUser };
+      delete newUser.isNew;
+      delete newUser.originalId;
+      const success = onAddUser(newUser);
+      if (success !== false) setEditingUser(null);
+    } else {
+      const updated = { ...editingUser };
+      delete updated.originalId;
+      const success = onUpdateUser(updated, editingUser.originalId);
+      if (success !== false) setEditingUser(null);
+    }
+  };
+
+  const handleAddClick = () => {
+    setEditingUser({ id: '', pw: '', name: '', dept: '', role: 'Editor', needPwChange: true, isNew: true });
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6 relative">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold text-slate-800">사용자 계정 및 권한 관리</h2>
+        <button onClick={handleAddClick} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-blue-700 flex items-center shadow-md transition">
+          <Plus size={16} className="mr-2" /> 신규 계정 추가
+        </button>
+      </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-50 text-slate-600 border-b">
+            <tr>
+              <th className="px-6 py-4 font-bold">ID (사번)</th>
+              <th className="px-6 py-4 font-bold">이름</th>
+              <th className="px-6 py-4 font-bold">소속 부서</th>
+              <th className="px-6 py-4 font-bold">시스템 권한</th>
+              <th className="px-6 py-4 font-bold">계정 상태</th>
+              <th className="px-6 py-4 font-bold text-right">관리</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {users.map(u => (
+              <tr key={u.id} className="hover:bg-slate-50 transition">
+                <td className="px-6 py-4 font-extrabold text-slate-800">{u.id}</td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center font-bold text-slate-700">
+                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs mr-3 shadow-sm">
+                      {u.name.charAt(0)}
+                    </div>
+                    {u.name}
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-slate-500 font-medium">{u.dept}</td>
+                <td className="px-6 py-4">
+                  <span className={`px-2.5 py-1 rounded-md text-xs font-bold shadow-sm border ${u.role === 'System Admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                    {u.role}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  {u.needPwChange ? 
+                    <span className="text-amber-500 font-bold text-xs flex items-center"><AlertCircle size={14} className="mr-1"/>비번 변경 대기</span> : 
+                    <span className="text-blue-500 font-bold text-xs flex items-center"><CheckCircle size={14} className="mr-1"/>활성</span>
+                  }
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <button onClick={() => setEditingUser({...u, originalId: u.id})} className="text-blue-600 hover:text-blue-800 font-bold text-xs mr-3 transition">수정</button>
+                  <button onClick={() => onDeleteUser(u.id)} className="text-red-500 hover:text-red-700 font-bold text-xs transition disabled:opacity-30" disabled={u.id==='admin'}>삭제</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {editingUser && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
+            <h3 className="text-lg font-extrabold mb-6 text-slate-800 border-b pb-3">{editingUser.isNew ? '신규 계정 추가' : '계정 정보 수정'}</h3>
+            <form onSubmit={handleSave} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">ID (사번/계정명)</label>
+                <input 
+                  type="text" value={editingUser.id} 
+                  onChange={e => {
+                    if (editingUser.isNew) {
+                      setEditingUser({...editingUser, id: e.target.value, pw: e.target.value});
+                    } else {
+                      setEditingUser({...editingUser, id: e.target.value});
+                    }
+                  }} 
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium disabled:opacity-50 disabled:bg-slate-50" 
+                  placeholder="사번 입력 (초기 비밀번호와 동일)" required
+                  disabled={editingUser.originalId === 'admin'}
+                />
+                {editingUser.originalId === 'admin' && <p className="text-[10px] text-red-500 mt-1">최고 관리자 ID는 변경할 수 없습니다.</p>}
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">이름</label>
+                <input 
+                  type="text" value={editingUser.name} 
+                  onChange={e => setEditingUser({...editingUser, name: e.target.value})} 
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">소속 부서</label>
+                <input 
+                  type="text" value={editingUser.dept} 
+                  onChange={e => setEditingUser({...editingUser, dept: e.target.value})} 
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">시스템 권한 (Role)</label>
+                <select 
+                  value={editingUser.role} 
+                  onChange={e => setEditingUser({...editingUser, role: e.target.value})} 
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                >
+                  <option value="System Admin">System Admin (전체 권한)</option>
+                  <option value="Editor">Editor (편집자)</option>
+                  <option value="Viewer">Viewer (조회 전용)</option>
+                </select>
+              </div>
+              
+              {!editingUser.isNew && (
+                <div className="flex items-center pt-2 bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
+                  <input 
+                    type="checkbox" id="pwReset" 
+                    checked={editingUser.needPwChange} 
+                    onChange={e => setEditingUser({...editingUser, needPwChange: e.target.checked, pw: editingUser.id})} 
+                    className="mr-2" 
+                  />
+                  <label htmlFor="pwReset" className="text-xs font-bold text-slate-700 cursor-pointer leading-tight">
+                    비밀번호 초기화<br/><span className="text-[10px] text-slate-500 font-medium">(사번으로 초기화 및 강제 변경 상태로 전환)</span>
+                  </label>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-2 mt-8 pt-4 border-t border-slate-100">
+                <button 
+                  type="button" onClick={() => setEditingUser(null)} 
+                  className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition"
+                >
+                  취소
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition shadow-md"
+                >
+                  저장
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
