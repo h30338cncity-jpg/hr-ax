@@ -5,48 +5,47 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>온톨로지 맵 서비스</title>
   
-  <!-- Tailwind CSS -->
+  <!-- 디자인 (Tailwind CSS) -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- React & ReactDOM -->
+  <!-- React 엔진 -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   
-  <!-- Babel (JSX 컴파일러) -->
+  <!-- 코드 실시간 번역기 (Babel) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
-  <!-- Lucide Icons (Vanilla JS) -->
+  <!-- 아이콘 및 캡처 도구 -->
   <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- html2canvas (이미지 캡처용 라이브러리) -->
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
   <style>
-    /* SVG 아이콘이 부모 Wrapper(Span) 크기에 맞게 조절되도록 강제 설정 */
+    /* 아이콘 크기 강제 맞춤 */
     .lucide { width: 100%; height: 100%; stroke: currentColor; }
-    /* 텍스트 드래그 방지 (팬 이동 시 깔끔하게) */
+    /* 드래그 시 텍스트 파란색 선택 방지 */
     .no-select { user-select: none; -webkit-user-select: none; }
   </style>
 </head>
 <body class="bg-slate-50">
+  <!-- React 앱이 그려질 도화지 -->
   <div id="root"></div>
 
+  <!-- 실제 서비스 로직 (자바스크립트/React) -->
   <script type="text/babel">
     const { useState, useEffect, useRef, useCallback } = React;
 
-    // --- Lucide 아이콘 React Wrapper (HTML 단일 파일용) ---
+    // --- Lucide 아이콘 React Wrapper ---
     const IconWrapper = ({ name, size = 24, className = "" }) => {
       const ref = useRef(null);
       useEffect(() => {
-        if (ref.current) {
+        if (ref.current && window.lucide) {
           ref.current.innerHTML = `<i data-lucide="${name}"></i>`;
-          lucide.createIcons({ root: ref.current });
+          window.lucide.createIcons({ root: ref.current });
         }
       }, [name]);
       return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} style={{ width: size, height: size, color: 'inherit' }}></span>;
     };
 
-    // 사용된 모든 아이콘 매핑
     const Network = (p) => <IconWrapper name="network" {...p} />;
     const LayoutDashboard = (p) => <IconWrapper name="layout-dashboard" {...p} />;
     const Settings = (p) => <IconWrapper name="settings" {...p} />;
@@ -91,11 +90,11 @@
     const ZoomOut = (p) => <IconWrapper name="zoom-out" {...p} />;
     const Move = (p) => <IconWrapper name="move" {...p} />;
 
-    // --- [Default Meta Attributes based on Schema] ---
+    // --- [기본 세팅 값] ---
     const defaultMeta = {
       Task: { 상태: '미진행', 목적: '', 담당자: '', 시작일: '', 종료일: '' },
-      Data: { 상태: '미진행', 담당자: '', 데이터셋명: '', 데이터형태: '', 갱신주기: '', 접근권한: '' }, 
-      System: { 상태: '미진행', 담당자: '', 시스템명: '', URL: '', 운영부서: '', 데이터셋명: '', 데이터형태: '', 접근권한: '' }, 
+      Data: { 상태: '미진행', 담당자: '', 데이터셋명: '', 데이터형태: '', 갱신주기: '' }, 
+      System: { 상태: '미진행', 담당자: '', 시스템명: '', URL: '', 운영부서: '', 데이터셋명: '', 데이터형태: '' }, 
       Law: { 상태: '미진행', 담당자: '', 국가법령명: '', 시행일: '', 소관부처: '', 조항: '', 원문링크: '' },
       Regulation: { 상태: '미진행', 담당자: '', 사내규정명: '', 시행일: '', 주관부서: '', 조항: '', 원문링크: '' },
       Guideline: { 상태: '미진행', 담당자: '', 매뉴얼명: '', 버전: '', 작성자: '', 원문파일: '' },
@@ -208,7 +207,7 @@
         <div className="space-y-1.5">
           <select 
             className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-bold text-slate-700 cursor-pointer transition" 
-            value={mode === 'custom' ? 'custom' : val} 
+            value={mode === 'custom' ? 'custom' : (val || '')} 
             onChange={handleSelect}
           >
             <option value="">형태 선택...</option>
@@ -220,7 +219,7 @@
              <input 
                type="text" 
                className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-medium mt-1" 
-               value={val} onChange={(e) => updateNodeMeta(nodeId, '데이터형태', e.target.value)} 
+               value={val || ''} onChange={(e) => updateNodeMeta(nodeId, '데이터형태', e.target.value)} 
                placeholder="원하는 데이터 형태를 직접 입력하세요" 
              />
           )}
@@ -232,6 +231,7 @@
       );
     };
 
+    // --- [Main App Component] ---
     function TaskOntologyApp() {
       const [usersDb, setUsersDb] = useState(() => {
         const saved = localStorage.getItem('ontologyUsersDB');
@@ -520,22 +520,33 @@
     };
 
     const MapAndDashboardContainer = ({ currentView, setCurrentView, showToast, currentUser, usersDb, onAddUser, onUpdateUser, onDeleteUser }) => {
-      const [nodes, setNodes] = useState(() => {
-        const saved = localStorage.getItem('ontologyMapDB');
-        return saved ? JSON.parse(saved).nodes || [] : [];
-      });
-      const [edges, setEdges] = useState(() => {
-        const saved = localStorage.getItem('ontologyMapDB');
-        return saved ? JSON.parse(saved).edges || [] : [];
-      });
+      const [nodes, setNodes] = useState([]);
+      const [edges, setEdges] = useState([]);
+      const [isLoaded, setIsLoaded] = useState(false);
 
       useEffect(() => {
+        try {
+          const saved = localStorage.getItem('ontologyMapDB');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            setNodes(parsed.nodes || []);
+            setEdges(parsed.edges || []);
+          }
+        } catch (error) {
+          console.error("Local storage load failed", error);
+        } finally {
+          setIsLoaded(true);
+        }
+      }, []);
+
+      useEffect(() => {
+        if (!isLoaded) return;
         try {
           localStorage.setItem('ontologyMapDB', JSON.stringify({ nodes, edges }));
         } catch (error) {
           console.error("Auto-save failed", error);
         }
-      }, [nodes, edges]);
+      }, [nodes, edges, isLoaded]);
 
       const handleSaveMap = useCallback(() => {
         try {
@@ -545,6 +556,8 @@
           showToast('저장 공간(용량) 부족으로 실패했습니다.', 'error');
         }
       }, [nodes, edges, showToast]);
+
+      if (!isLoaded) return null; 
 
       return (
         <div className="flex-1 overflow-hidden relative bg-slate-50/50 flex flex-col">
@@ -556,7 +569,7 @@
     };
 
     const DashboardView = ({ onNavMap, nodes, edges, currentUser }) => {
-      const myNodes = nodes.filter(n => n.meta?.담당자?.includes(currentUser.name));
+      const myNodes = nodes.filter(n => (n.meta?.담당자 || '').includes(currentUser?.name || ''));
       const myEdgesCount = edges.filter(e => myNodes.some(n => n.id === e.source || n.id === e.target)).length;
 
       const connectedNodes = nodes.filter(n => edges.some(e => e.source === n.id || e.target === n.id));
@@ -639,10 +652,8 @@
       const [isPanelOpen, setIsPanelOpen] = useState(false); 
       const [isAddModalOpen, setIsAddModalOpen] = useState(false);
       
-      // 마우스 호버 상태 추적 (하이라이트 기능)
       const [hoveredNode, setHoveredNode] = useState(null);
 
-      // --- 줌 & 팬 (화면 이동) 상태 추가 ---
       const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
       const [isPanning, setIsPanning] = useState(false);
       const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -672,10 +683,8 @@
         setEdges(next.edges);
       }, [future, nodes, edges, setNodes, setEdges]);
 
-      // 단축키 설정
       useEffect(() => {
         const handleKeyDown = (e) => {
-          // 입력창 포커스 중에는 단축키 무시
           if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
           if (e.ctrlKey || e.metaKey) {
@@ -692,7 +701,6 @@
           }
         };
 
-        // 휠 줌인/줌아웃
         const handleWheel = (e) => {
           if (!mapContainerRef.current?.contains(e.target)) return;
           
@@ -700,7 +708,7 @@
             e.preventDefault();
             const scaleFactor = -e.deltaY * 0.001;
             setTransform(prev => {
-              const newK = Math.min(Math.max(0.2, prev.k + scaleFactor), 3); // 0.2 ~ 3배 줌 제한
+              const newK = Math.min(Math.max(0.2, prev.k + scaleFactor), 3); 
               return { ...prev, k: newK };
             });
           }
@@ -714,16 +722,6 @@
         };
       }, [handleSaveMap, undo, redo]);
 
-
-      // --- 마우스 드래그 상호작용 로직 ---
-      const getMousePosition = (e) => {
-        if (!svgRef.current) return { x: 0, y: 0 };
-        const CTM = svgRef.current.getScreenCTM();
-        return {
-          x: (e.clientX - CTM.e) / CTM.a,
-          y: (e.clientY - CTM.f) / CTM.d
-        };
-      };
 
       const handleBackgroundMouseDown = (e) => {
         if (!connectMode) {
@@ -770,7 +768,6 @@
       };
 
       const handleMouseMove = (e) => {
-        // 팬(화면 이동) 중일 때
         if (isPanning) {
           const dx = e.clientX - panStart.x;
           const dy = e.clientY - panStart.y;
@@ -779,10 +776,8 @@
           return;
         }
 
-        // 노드 드래그 중일 때
-        if (!dragging) return;
+        if (!dragging || !svgRef.current) return;
         
-        // 줌 적용 상태에서의 마우스 좌표 계산 보정
         const pt = svgRef.current.createSVGPoint();
         pt.x = e.clientX;
         pt.y = e.clientY;
@@ -790,7 +785,6 @@
         
         setNodes(prev => prev.map(n => {
           if (n.id === dragging) {
-            // 그룹 transform 줌 배율(k)로 나누어 보정
             return { 
               ...n, 
               x: (svgP.x - transform.x) / transform.k, 
@@ -823,7 +817,6 @@
           'Task': '새로운 과제', 'Data': '새로운 데이터', 'System': '새로운 시스템',
           'Law': '새로운 국가법령', 'Regulation': '새로운 사내규정', 'Guideline': '새로운 지침', 'Deliverable': '새로운 산출물'
         };
-        // 현재 화면 뷰포트의 중앙을 계산 (줌 및 팬 보정)
         const mapContainer = mapContainerRef.current;
         const cw = mapContainer ? mapContainer.clientWidth / 2 : 300;
         const ch = mapContainer ? mapContainer.clientHeight / 2 : 300;
@@ -860,17 +853,13 @@
         showToast('삭제되었습니다.');
       };
 
-      // 이미지 캡처 기능 (html2canvas 사용)
       const handleCapture = async () => {
         if (!mapContainerRef.current) return;
         try {
           showToast('이미지 캡처 중입니다...', 'success');
-          // 캡처 전 줌/팬 상태 초기화 (원하는 화면 캡처를 위해 선택적 적용)
-          // setTransform({x:0, y:0, k:1}); 
-          
           const canvas = await html2canvas(mapContainerRef.current, {
-            backgroundColor: '#f8fafc', // slate-50
-            scale: 2 // 고화질
+            backgroundColor: '#f8fafc',
+            scale: 2
           });
           const image = canvas.toDataURL("image/png");
           const link = document.createElement('a');
@@ -975,7 +964,6 @@
         }).filter(item => item.node); 
       };
 
-      // 호버 하이라이팅 검사 함수
       const isNodeConnectedToHover = (nodeId) => {
         if (!hoveredNode || hoveredNode === nodeId) return true;
         return edges.some(e => (e.source === hoveredNode && e.target === nodeId) || (e.target === hoveredNode && e.source === nodeId));
@@ -1064,7 +1052,6 @@
       return (
         <div className="flex h-full rounded-2xl bg-white shadow-lg border border-slate-200 overflow-hidden flex-col relative">
           
-          {/* 상단 툴바 */}
           <div className="bg-white border-b border-slate-200 p-2.5 flex items-center justify-between z-10 px-5 shrink-0 shadow-sm relative">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-1 border-r border-slate-200 pr-4">
@@ -1100,7 +1087,6 @@
 
           <div className="flex flex-1 relative min-h-0 bg-slate-50 overflow-hidden no-select">
             
-            {/* SVG Canvas - 줌 및 팬 적용을 위한 내부 그룹(g) 추가 */}
             <div 
               id="map-container"
               ref={mapContainerRef}
@@ -1111,7 +1097,6 @@
               onMouseDown={handleBackgroundMouseDown}
             >
               <svg ref={svgRef} className="w-full h-full pointer-events-none">
-                {/* 1. 배경 격자 (항상 고정) */}
                 <defs>
                   <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform={`translate(${transform.x % 40}, ${transform.y % 40}) scale(${transform.k})`}>
                     <circle cx="2" cy="2" r="1.5" fill="#cbd5e1" />
@@ -1134,9 +1119,7 @@
 
                 <rect width="100%" height="100%" fill="url(#grid)" className="pointer-events-auto" onClick={(e) => { e.stopPropagation(); if(!connectMode) { setSelectedId(null); setSelectionType(null); setIsPanelOpen(false); } }} />
                 
-                {/* 2. 객체 및 선 (줌/팬 transform 적용) */}
                 <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`} className="pointer-events-auto">
-                  {/* Edges */}
                   {edges.map((edge) => {
                     const s = nodes.find(n => n.id === edge.source);
                     const t = nodes.find(n => n.id === edge.target);
@@ -1168,7 +1151,6 @@
                     );
                   })}
 
-                  {/* Nodes */}
                   {nodes.map(node => {
                     const isSelected = selectedId === node.id && selectionType === 'node';
                     const isSource = connectSource === node.id;
@@ -1232,7 +1214,6 @@
                 </g>
               </svg>
               
-              {/* 우측 하단 미니맵 컨트롤 바 */}
               <div className="absolute bottom-6 right-6 bg-white border border-slate-200 shadow-lg rounded-xl flex items-center overflow-hidden z-10">
                  <button onClick={() => setTransform(p => ({...p, k: Math.min(p.k + 0.2, 3)}))} className="p-2.5 text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition border-r border-slate-100" title="확대 (Ctrl+Wheel Up)"><ZoomIn size={18}/></button>
                  <div className="px-3 text-xs font-extrabold text-slate-500 w-16 text-center select-none">{Math.round(transform.k * 100)}%</div>
@@ -1253,486 +1234,489 @@
 
             <button 
               onClick={() => setIsPanelOpen(!isPanelOpen)} 
-              className={`absolute right-0 top-1/2 transform -translate-y-1/2 bg-white border border-r-0 border-slate-200 p-3 rounded-l-xl shadow-[-4px_0_10px_rgba(0,0,0,0.05)] z-20 hover:bg-slate-50 text-slate-500 transition-all ${!selectedId && nodes.length === 0 ? 'translate-x-full opacity-0' : 'opacity-100'}`}
+              className={`absolute top-1/2 transform -translate-y-1/2 bg-white border border-r-0 border-slate-200 p-3 rounded-l-xl shadow-[-4px_0_10px_rgba(0,0,0,0.05)] z-20 hover:bg-slate-50 text-slate-500 transition-all duration-300 ${!selectedId && nodes.length === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+              style={{ right: isPanelOpen ? '400px' : '0' }}
               title={isPanelOpen ? "패널 닫기" : "패널 열기"}
             >
               {isPanelOpen ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
             </button>
-          </div>
 
-          <div className={`bg-white border-l border-slate-200 shadow-[-10px_0_20px_-5px_rgba(0,0,0,0.05)] z-20 transition-all duration-300 flex flex-col ${isPanelOpen ? 'w-[400px]' : 'w-0 border-none'}`}>
-            <div className="w-[400px] flex flex-col h-full overflow-hidden">
-              {selectionType === 'node' && selectedNode ? (
-                <div className="flex-1 flex flex-col min-h-0 overflow-y-auto bg-slate-50/30">
-                  <div className="p-6 border-b border-slate-200 bg-white shrink-0 relative">
-                    <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider mb-2 block">노드 속성 편집</span>
-                    
-                    <button onClick={() => addMemo(selectedNode.id)} className="absolute top-5 right-5 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-bold transition flex items-center">
-                      <PlusCircle size={14} className="mr-1"/> 메모 추가
-                    </button>
+            <div className={`bg-white border-l border-slate-200 shadow-[-10px_0_20px_-5px_rgba(0,0,0,0.05)] z-20 transition-all duration-300 flex flex-col shrink-0 ${isPanelOpen ? 'w-[400px]' : 'w-0 border-none overflow-hidden'}`}>
+              <div className="w-[400px] flex flex-col h-full overflow-hidden">
+                {selectionType === 'node' && selectedNode ? (
+                  <div className="flex-1 flex flex-col min-h-0 overflow-y-auto bg-slate-50/30">
+                    <div className="p-6 border-b border-slate-200 bg-white shrink-0 relative">
+                      <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider mb-2 block">노드 속성 편집</span>
+                      
+                      <button onClick={() => addMemo(selectedNode.id)} className="absolute top-5 right-5 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-bold transition flex items-center">
+                        <PlusCircle size={14} className="mr-1"/> 메모 추가
+                      </button>
 
-                    <select 
-                      value={selectedNode.type}
-                      onChange={(e) => updateNodeType(selectedNode.id, e.target.value)}
-                      className="text-xs font-bold text-slate-500 uppercase tracking-wider bg-slate-100 hover:bg-slate-200 cursor-pointer rounded px-2 py-1 outline-none mb-3 border border-slate-200 transition"
-                    >
-                      <option value="Task">과제 (Task)</option>
-                      <option value="Data">데이터 (Data)</option>
-                      <option value="System">시스템 (System)</option>
-                      <option value="Law">국가법령 (Law)</option>
-                      <option value="Regulation">사내규정 (Regulation)</option>
-                      <option value="Guideline">지침 (Guideline)</option>
-                      <option value="Deliverable">산출물 (Deliverable)</option>
-                    </select>
-                    <input 
-                      type="text" value={selectedNode.label} onChange={(e) => updateNode(selectedNode.id, 'label', e.target.value)}
-                      className="w-full text-xl font-extrabold text-slate-800 bg-transparent border-b-2 border-dashed border-slate-300 focus:border-blue-500 outline-none pb-1.5 mb-4"
-                    />
-                    
-                    <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-inner">
-                      <label className="text-xs font-bold text-slate-700 block mb-1.5">진행 상태 (Status)</label>
-                      <select
-                        value={selectedNode.meta?.상태 || '미진행'}
-                        onChange={(e) => updateNodeMeta(selectedNode.id, '상태', e.target.value)}
-                        className="w-full text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 cursor-pointer transition"
+                      <select 
+                        value={selectedNode.type}
+                        onChange={(e) => updateNodeType(selectedNode.id, e.target.value)}
+                        className="text-xs font-bold text-slate-500 uppercase tracking-wider bg-slate-100 hover:bg-slate-200 cursor-pointer rounded px-2 py-1 outline-none mb-3 border border-slate-200 transition"
                       >
-                        <option value="미진행">미진행 (Not Started)</option>
-                        <option value="진행중">진행중 (In Progress)</option>
-                        <option value="보류">보류 (Pending)</option>
-                        <option value="완료">완료 (Completed)</option>
+                        <option value="Task">과제 (Task)</option>
+                        <option value="Data">데이터 (Data)</option>
+                        <option value="System">시스템 (System)</option>
+                        <option value="Law">국가법령 (Law)</option>
+                        <option value="Regulation">사내규정 (Regulation)</option>
+                        <option value="Guideline">지침 (Guideline)</option>
+                        <option value="Deliverable">산출물 (Deliverable)</option>
                       </select>
+                      <input 
+                        type="text" value={selectedNode.label} onChange={(e) => updateNode(selectedNode.id, 'label', e.target.value)}
+                        className="w-full text-xl font-extrabold text-slate-800 bg-transparent border-b-2 border-dashed border-slate-300 focus:border-blue-500 outline-none pb-1.5 mb-4"
+                      />
+                      
+                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-inner">
+                        <label className="text-xs font-bold text-slate-700 block mb-1.5">진행 상태 (Status)</label>
+                        <select
+                          value={selectedNode.meta?.상태 || '미진행'}
+                          onChange={(e) => updateNodeMeta(selectedNode.id, '상태', e.target.value)}
+                          className="w-full text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 cursor-pointer transition"
+                        >
+                          <option value="미진행">미진행 (Not Started)</option>
+                          <option value="진행중">진행중 (In Progress)</option>
+                          <option value="보류">보류 (Pending)</option>
+                          <option value="완료">완료 (Completed)</option>
+                        </select>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="p-6 space-y-5">
-                    <div className="space-y-4">
-                      <h4 className="text-sm font-extrabold text-slate-800 border-b border-slate-200 pb-2">필수 메타데이터</h4>
-                      {Object.keys(defaultMeta[selectedNode.type]).filter(k => k !== '상태').map((key) => (
-                        <div key={key} className="flex flex-col space-y-1.5 group">
-                          <label className="text-xs font-bold text-slate-500 group-focus-within:text-blue-600 transition">{key}</label>
-                          {renderMetaInput(key, selectedNode.meta[key] || '', selectedNode.id)}
-                        </div>
-                      ))}
-                    </div>
-
-                    {Object.keys(selectedNode.meta).filter(k => !Object.keys(defaultMeta[selectedNode.type]).includes(k) && k !== '상태' && k !== '첨부파일').length > 0 && (
-                      <div className="space-y-4 pt-4 border-t border-slate-200">
-                        <h4 className="text-sm font-extrabold text-indigo-800 border-b border-indigo-100 pb-2 flex items-center">
-                          <FileText size={16} className="mr-1.5" /> 커스텀 메모장
-                        </h4>
-                        {Object.keys(selectedNode.meta)
-                          .filter(k => !Object.keys(defaultMeta[selectedNode.type]).includes(k) && k !== '상태' && k !== '첨부파일')
-                          .map(key => (
-                          <div key={key} className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 relative group">
-                            <input 
-                              type="text" 
-                              className="text-xs font-bold text-indigo-700 bg-transparent border-b border-indigo-200 outline-none mb-2 w-3/4 pb-0.5 focus:border-indigo-500" 
-                              value={key} 
-                              onChange={(e) => renameNodeMetaKey(selectedNode.id, key, e.target.value)}
-                              placeholder="메모 제목"
-                            />
-                            <button onClick={() => deleteNodeMetaKey(selectedNode.id, key)} className="absolute top-3 right-3 text-indigo-300 hover:text-red-500 bg-white rounded-full p-1 shadow-sm transition">
-                              <Trash2 size={12} />
-                            </button>
-                            <textarea 
-                              className="w-full text-sm text-slate-700 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-300 p-2.5 min-h-[80px] resize-y"
-                              value={selectedNode.meta[key]} 
-                              onChange={(e) => updateNodeMeta(selectedNode.id, key, e.target.value)} 
-                              placeholder="자유롭게 내용을 작성하세요."
-                            />
+                    
+                    <div className="p-6 space-y-5">
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-extrabold text-slate-800 border-b border-slate-200 pb-2">필수 메타데이터</h4>
+                        {Object.keys(defaultMeta[selectedNode.type]).filter(k => k !== '상태').map((key) => (
+                          <div key={key} className="flex flex-col space-y-1.5 group">
+                            <label className="text-xs font-bold text-slate-500 group-focus-within:text-blue-600 transition">{key}</label>
+                            {renderMetaInput(key, selectedNode.meta[key] || '', selectedNode.id)}
                           </div>
                         ))}
                       </div>
-                    )}
 
-                    <div className="pt-4 border-t border-slate-200">
-                      <h4 className="text-sm font-extrabold text-slate-800 mb-3 flex items-center">
-                        <Paperclip size={16} className="mr-1.5 text-slate-500" /> 파일 첨부 및 다운로드
-                      </h4>
-                      {selectedNode.meta?.첨부파일 ? (
-                        <div className="flex items-center justify-between bg-white border border-slate-300 shadow-sm p-3 rounded-xl text-sm font-bold text-slate-700">
-                          <span className="truncate flex-1 mr-3 text-blue-600">
-                            {selectedNode.meta.첨부파일.name || selectedNode.meta.첨부파일}
-                          </span>
-                          <div className="flex items-center space-x-1 shrink-0">
-                            {selectedNode.meta.첨부파일.url && (
-                              <a 
-                                href={selectedNode.meta.첨부파일.url} 
-                                download={selectedNode.meta.첨부파일.name}
-                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition"
-                                title="파일 다운로드"
-                              >
-                                <Download size={16}/>
-                              </a>
-                            )}
-                            <button onClick={() => deleteNodeMetaKey(selectedNode.id, '첨부파일')} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition">
-                              <X size={16}/>
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <label className="flex flex-col items-center justify-center w-full bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-6 text-sm text-slate-500 cursor-pointer hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 transition font-bold">
-                          <Paperclip size={24} className="mb-2 text-slate-400" />
-                          <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, selectedNode.id)} />
-                          PC에서 문서/파일 업로드
-                        </label>
-                      )}
-                    </div>
-
-                    <div className="pt-6 border-t border-slate-200 pb-10">
-                      <h4 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center">
-                        <Network size={16} className="text-blue-500 mr-1.5" /> 연결된 객체 현황
-                      </h4>
-                      {getConnectedObjects(selectedNode.id).length === 0 ? (
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
-                          <p className="text-xs text-slate-400 font-bold">현재 연결된 노드가 없습니다.</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {getConnectedObjects(selectedNode.id).map((item, idx) => (
-                            <div key={idx} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 transition group">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-[10px] font-extrabold px-2.5 py-1 rounded text-white shadow-sm" style={{ backgroundColor: typeColors[item.node.type] }}>
-                                  {typeLabels[item.node.type]}
-                                </span>
-                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded border flex items-center ${item.edge.method !== 'manual' || item.edge.logic ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
-                                  {item.edge.method === 'manual' ? <Edit3 size={10} className="mr-1"/> : <Zap size={10} className="mr-1"/>}
-                                  {methodNames[item.edge.method]}
-                                </span>
-                              </div>
-                              <div className="text-sm font-extrabold text-slate-800 truncate mb-1">{item.node.label}</div>
-                              {item.edge.method !== 'manual' && item.edge.logic && (
-                                <div className="text-xs text-slate-500 mt-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 leading-snug">
-                                  {item.edge.logic}
-                                </div>
-                              )}
+                      {Object.keys(selectedNode.meta).filter(k => !Object.keys(defaultMeta[selectedNode.type]).includes(k) && k !== '상태' && k !== '첨부파일').length > 0 && (
+                        <div className="space-y-4 pt-4 border-t border-slate-200">
+                          <h4 className="text-sm font-extrabold text-indigo-800 border-b border-indigo-100 pb-2 flex items-center">
+                            <FileText size={16} className="mr-1.5" /> 커스텀 메모장
+                          </h4>
+                          {Object.keys(selectedNode.meta)
+                            .filter(k => !Object.keys(defaultMeta[selectedNode.type]).includes(k) && k !== '상태' && k !== '첨부파일')
+                            .map(key => (
+                            <div key={key} className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 relative group">
+                              <input 
+                                type="text" 
+                                className="text-xs font-bold text-indigo-700 bg-transparent border-b border-indigo-200 outline-none mb-2 w-3/4 pb-0.5 focus:border-indigo-500" 
+                                value={key} 
+                                onChange={(e) => renameNodeMetaKey(selectedNode.id, key, e.target.value)}
+                                placeholder="메모 제목"
+                              />
+                              <button onClick={() => deleteNodeMetaKey(selectedNode.id, key)} className="absolute top-3 right-3 text-indigo-300 hover:text-red-500 bg-white rounded-full p-1 shadow-sm transition">
+                                <Trash2 size={12} />
+                              </button>
+                              <textarea 
+                                className="w-full text-sm text-slate-700 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-300 p-2.5 min-h-[80px] resize-y"
+                                value={selectedNode.meta[key]} 
+                                onChange={(e) => updateNodeMeta(selectedNode.id, key, e.target.value)} 
+                                placeholder="자유롭게 내용을 작성하세요."
+                              />
                             </div>
                           ))}
                         </div>
                       )}
+
+                      <div className="pt-4 border-t border-slate-200">
+                        <h4 className="text-sm font-extrabold text-slate-800 mb-3 flex items-center">
+                          <Paperclip size={16} className="mr-1.5 text-slate-500" /> 파일 첨부 및 다운로드
+                        </h4>
+                        {selectedNode.meta?.첨부파일 ? (
+                          <div className="flex items-center justify-between bg-white border border-slate-300 shadow-sm p-3 rounded-xl text-sm font-bold text-slate-700">
+                            <span className="truncate flex-1 mr-3 text-blue-600">
+                              {selectedNode.meta.첨부파일.name || selectedNode.meta.첨부파일}
+                            </span>
+                            <div className="flex items-center space-x-1 shrink-0">
+                              {selectedNode.meta.첨부파일.url && (
+                                <a 
+                                  href={selectedNode.meta.첨부파일.url} 
+                                  download={selectedNode.meta.첨부파일.name}
+                                  className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition"
+                                  title="파일 다운로드"
+                                >
+                                  <Download size={16}/>
+                                </a>
+                              )}
+                              <button onClick={() => deleteNodeMetaKey(selectedNode.id, '첨부파일')} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition">
+                                <X size={16}/>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center w-full bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-6 text-sm text-slate-500 cursor-pointer hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 transition font-bold">
+                            <Paperclip size={24} className="mb-2 text-slate-400" />
+                            <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, selectedNode.id)} />
+                            PC에서 문서/파일 업로드
+                          </label>
+                        )}
+                      </div>
+
+                      <div className="pt-6 border-t border-slate-200 pb-10">
+                        <h4 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center">
+                          <Network size={16} className="text-blue-500 mr-1.5" /> 연결된 객체 현황
+                        </h4>
+                        {getConnectedObjects(selectedNode.id).length === 0 ? (
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                            <p className="text-xs text-slate-400 font-bold">현재 연결된 노드가 없습니다.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {getConnectedObjects(selectedNode.id).map((item, idx) => (
+                              <div key={idx} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 transition group">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-[10px] font-extrabold px-2.5 py-1 rounded text-white shadow-sm" style={{ backgroundColor: typeColors[item.node.type] }}>
+                                    {typeLabels[item.node.type]}
+                                  </span>
+                                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded border flex items-center ${item.edge.method !== 'manual' || item.edge.logic ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
+                                    {item.edge.method === 'manual' ? <Edit3 size={10} className="mr-1"/> : <Zap size={10} className="mr-1"/>}
+                                    {methodNames[item.edge.method]}
+                                  </span>
+                                </div>
+                                <div className="text-sm font-extrabold text-slate-800 truncate mb-1">{item.node.label}</div>
+                                {item.edge.method !== 'manual' && item.edge.logic && (
+                                  <div className="text-xs text-slate-500 mt-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 leading-snug">
+                                    {item.edge.logic}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : selectionType === 'edge' && selectedEdge ? (
-                <div className="flex-1 flex flex-col bg-white">
-                  <div className="p-6 border-b border-slate-200 bg-slate-50 shrink-0">
-                    <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider mb-3 block">관계선(Link) 도출 방식 지정</span>
-                    
-                    <select
-                      value={selectedEdge.method || 'manual'} onChange={(e) => updateEdge(selectedEdge.id, 'method', e.target.value)}
-                      className="w-full text-base font-extrabold text-slate-800 bg-white border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none px-4 py-3 cursor-pointer shadow-sm transition"
-                    >
-                      <option value="manual">✋ 수동 입력 (No Rule)</option>
-                      <option disabled>────────── [ 데이터/AI 도출 ] ──────────</option>
-                      <option value="semantic">🧠 시맨틱 추론 (Semantic AI)</option>
-                      <option value="keyword">🔑 키워드 매칭 (Keyword Match)</option>
-                      <option value="cooccurrence">📄 문서 동시 출현 (Co-occurrence)</option>
-                      <option disabled>────────── [ 논리/구조 도출 ] ──────────</option>
-                      <option value="rule">⚡ 사전 룰 엔진 매핑 (Rule Engine)</option>
-                      <option value="inheritance">🕸️ 상위 속성 상속 (Inheritance)</option>
-                      <option value="transitive">🔗 네트워크 연쇄 추론 (Transitive)</option>
-                      <option disabled>────────── [ 행동/로그 도출 ] ──────────</option>
-                      <option value="log">📈 시스템 로그 분석 (Log Analytics)</option>
-                    </select>
+                ) : selectionType === 'edge' && selectedEdge ? (
+                  <div className="flex-1 flex flex-col bg-white">
+                    <div className="p-6 border-b border-slate-200 bg-slate-50 shrink-0">
+                      <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider mb-3 block">관계선(Link) 도출 방식 지정</span>
+                      
+                      <select
+                        value={selectedEdge.method || 'manual'} onChange={(e) => updateEdge(selectedEdge.id, 'method', e.target.value)}
+                        className="w-full text-base font-extrabold text-slate-800 bg-white border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none px-4 py-3 cursor-pointer shadow-sm transition"
+                      >
+                        <option value="manual">✋ 수동 입력 (No Rule)</option>
+                        <option disabled>────────── [ 데이터/AI 도출 ] ──────────</option>
+                        <option value="semantic">🧠 시맨틱 추론 (Semantic AI)</option>
+                        <option value="keyword">🔑 키워드 매칭 (Keyword Match)</option>
+                        <option value="cooccurrence">📄 문서 동시 출현 (Co-occurrence)</option>
+                        <option disabled>────────── [ 논리/구조 도출 ] ──────────</option>
+                        <option value="rule">⚡ 사전 룰 엔진 매핑 (Rule Engine)</option>
+                        <option value="inheritance">🕸️ 상위 속성 상속 (Inheritance)</option>
+                        <option value="transitive">🔗 네트워크 연쇄 추론 (Transitive)</option>
+                        <option disabled>────────── [ 행동/로그 도출 ] ──────────</option>
+                        <option value="log">📈 시스템 로그 분석 (Log Analytics)</option>
+                      </select>
 
-                    <button 
-                      onClick={() => reverseEdgeDirection(selectedEdge.id)} 
-                      className="mt-4 w-full bg-white border border-slate-300 hover:bg-slate-100 hover:border-slate-400 text-slate-700 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center transition shadow-sm"
-                    >
-                      <ArrowLeftRight size={16} className="mr-2 text-slate-500" /> 화살표 방향 반전 (Swap)
-                    </button>
-                  </div>
-
-                  <div className="p-6 flex-1 overflow-y-auto bg-white">
-                    {selectedEdge.method === 'manual' && (
-                      <div className="mb-6">
-                        <label className="text-sm font-extrabold text-slate-800 mb-2 block">수동 관계 명칭 타이핑</label>
-                        <input 
-                          type="text" value={selectedEdge.label || ''} onChange={(e) => updateEdge(selectedEdge.id, 'label', e.target.value)}
-                          placeholder="관계 직접 입력 (예: 확인용, 참조함)"
-                          className="w-full text-sm font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none p-3 shadow-sm transition"
-                        />
-                      </div>
-                    )}
-
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
-                      <div className="flex items-center mb-2">
-                        {methodIcons[selectedEdge.method]}
-                        <span className="text-sm font-extrabold text-slate-800">{methodNames[selectedEdge.method]} 설명</span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                        {methodDescriptions[selectedEdge.method]}
-                      </p>
+                      <button 
+                        onClick={() => reverseEdgeDirection(selectedEdge.id)} 
+                        className="mt-4 w-full bg-white border border-slate-300 hover:bg-slate-100 hover:border-slate-400 text-slate-700 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center transition shadow-sm"
+                      >
+                        <ArrowLeftRight size={16} className="mr-2 text-slate-500" /> 화살표 방향 반전 (Swap)
+                      </button>
                     </div>
 
-                    {selectedEdge.method !== 'manual' && (
-                      <div className="mt-8">
-                        <label className="text-sm font-extrabold text-slate-800 mb-3 flex items-center">
-                          <Settings size={16} className="mr-1.5 text-blue-500" /> 
-                          상세 규칙 및 세팅 로직 정의
-                        </label>
-                        <textarea
-                          value={selectedEdge.logic || ''}
-                          onChange={(e) => updateEdge(selectedEdge.id, 'logic', e.target.value)}
-                          placeholder={logicPlaceholders[selectedEdge.method]}
-                          className="w-full text-sm font-medium text-slate-800 border border-slate-300 rounded-xl p-4 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 outline-none min-h-[140px] resize-y shadow-sm bg-white transition leading-relaxed"
-                        />
-                        <p className="text-[10px] text-slate-500 mt-2 font-medium leading-relaxed bg-blue-50 p-2 rounded-lg">
-                          💡 이 규칙은 온톨로지 엔진이 노드를 자동으로 연결할 때 시스템 판단 기준(조건문, 임계치 등)으로 활용되며 규칙 존재 시 맵에서 선이 초록색으로 표시됩니다.
+                    <div className="p-6 flex-1 overflow-y-auto bg-white">
+                      {selectedEdge.method === 'manual' && (
+                        <div className="mb-6">
+                          <label className="text-sm font-extrabold text-slate-800 mb-2 block">수동 관계 명칭 타이핑</label>
+                          <input 
+                            type="text" value={selectedEdge.label || ''} onChange={(e) => updateEdge(selectedEdge.id, 'label', e.target.value)}
+                            placeholder="관계 직접 입력 (예: 확인용, 참조함)"
+                            className="w-full text-sm font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none p-3 shadow-sm transition"
+                          />
+                        </div>
+                      )}
+
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
+                        <div className="flex items-center mb-2">
+                          {methodIcons[selectedEdge.method]}
+                          <span className="text-sm font-extrabold text-slate-800">{methodNames[selectedEdge.method]} 설명</span>
+                        </div>
+                        <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                          {methodDescriptions[selectedEdge.method]}
                         </p>
                       </div>
-                    )}
+
+                      {selectedEdge.method !== 'manual' && (
+                        <div className="mt-8">
+                          <label className="text-sm font-extrabold text-slate-800 mb-3 flex items-center">
+                            <Settings size={16} className="mr-1.5 text-blue-500" /> 
+                            상세 규칙 및 세팅 로직 정의
+                          </label>
+                          <textarea
+                            value={selectedEdge.logic || ''}
+                            onChange={(e) => updateEdge(selectedEdge.id, 'logic', e.target.value)}
+                            placeholder={logicPlaceholders[selectedEdge.method]}
+                            className="w-full text-sm font-medium text-slate-800 border border-slate-300 rounded-xl p-4 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 outline-none min-h-[140px] resize-y shadow-sm bg-white transition leading-relaxed"
+                          />
+                          <p className="text-[10px] text-slate-500 mt-2 font-medium leading-relaxed bg-blue-50 p-2 rounded-lg">
+                            💡 이 규칙은 온톨로지 엔진이 노드를 자동으로 연결할 때 시스템 판단 기준(조건문, 임계치 등)으로 활용되며 규칙 존재 시 맵에서 선이 초록색으로 표시됩니다.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center space-y-4 bg-slate-50/50">
+                    <div className="bg-white p-4 rounded-full shadow-sm border border-slate-100"><Type size={32} className="text-slate-300" /></div>
+                    <p className="text-sm font-bold text-slate-500 leading-relaxed">맵에서 노드나 선을 클릭하면<br/>해당 객체의 속성을 편집할 수 있습니다.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Modal */}
+          {isAddModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-white rounded-2xl shadow-2xl w-[540px] overflow-hidden border border-slate-200">
+                <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                  <h3 className="font-extrabold text-lg text-slate-800">새로운 객체 추가</h3>
+                  <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-6">
+                  
+                  <h4 className="text-xs font-extrabold text-slate-400 mb-3 uppercase tracking-wide">프로젝트 / 과제</h4>
+                  <div className="grid grid-cols-1 mb-6">
+                     <button onClick={() => { addNode('Task'); setIsAddModalOpen(false); }} className="flex items-center p-4 border border-slate-200 rounded-xl hover:border-blue-500 hover:shadow-lg transition text-left bg-white group">
+                        <div className="bg-blue-50 p-3 rounded-xl mr-4 group-hover:bg-blue-100 transition"><Briefcase size={20} className="text-blue-600"/></div>
+                        <div><div className="text-sm font-extrabold text-slate-800 mb-0.5">과제 (Task)</div><div className="text-xs text-slate-500 font-medium">최상위 프로젝트, 단위 업무, AX 과제 등</div></div>
+                     </button>
+                  </div>
+
+                  <h4 className="text-xs font-extrabold text-slate-400 mb-3 uppercase tracking-wide">구조형 객체 (데이터/시스템)</h4>
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                     <button onClick={() => { addNode('Data'); setIsAddModalOpen(false); }} className="flex flex-col items-center p-5 border border-slate-200 rounded-xl hover:border-sky-500 hover:shadow-lg transition text-center bg-white group">
+                        <div className="bg-sky-50 p-3 rounded-xl mb-3 group-hover:bg-sky-100 transition"><Database size={24} className="text-sky-600"/></div>
+                        <div className="text-sm font-extrabold text-slate-800 mb-1">데이터 (Data)</div>
+                        <div className="text-[10px] text-slate-500 font-medium">DB, 테이블, 정형 데이터</div>
+                     </button>
+                     <button onClick={() => { addNode('System'); setIsAddModalOpen(false); }} className="flex flex-col items-center p-5 border border-slate-200 rounded-xl hover:border-indigo-500 hover:shadow-lg transition text-center bg-white group">
+                        <div className="bg-indigo-50 p-3 rounded-xl mb-3 group-hover:bg-indigo-100 transition"><Monitor size={24} className="text-indigo-600"/></div>
+                        <div className="text-sm font-extrabold text-slate-800 mb-1">시스템 (System)</div>
+                        <div className="text-[10px] text-slate-500 font-medium">내부/외부 IT 인프라</div>
+                     </button>
+                  </div>
+
+                  <h4 className="text-xs font-extrabold text-slate-400 mb-3 uppercase tracking-wide">문서형 객체 (가이드/규정)</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                     <button onClick={() => { addNode('Law'); setIsAddModalOpen(false); }} className="flex items-center p-3 border border-slate-200 rounded-xl hover:border-red-500 hover:shadow-md transition text-left bg-white group">
+                        <div className="bg-red-50 p-2.5 rounded-lg mr-3 group-hover:bg-red-100 transition"><Scale size={16} className="text-red-600"/></div>
+                        <div><div className="text-xs font-extrabold text-slate-800">국가법령 (Law)</div><div className="text-[10px] text-slate-500 mt-0.5 font-medium">외부 법적 구속력</div></div>
+                     </button>
+                     <button onClick={() => { addNode('Regulation'); setIsAddModalOpen(false); }} className="flex items-center p-3 border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-md transition text-left bg-white group">
+                        <div className="bg-blue-50 p-2.5 rounded-lg mr-3 group-hover:bg-blue-100 transition"><ShieldCheck size={16} className="text-blue-600"/></div>
+                        <div><div className="text-xs font-extrabold text-slate-800">사내규정 (Regulation)</div><div className="text-[10px] text-slate-500 mt-0.5 font-medium">내부 운영 기준</div></div>
+                     </button>
+                     <button onClick={() => { addNode('Guideline'); setIsAddModalOpen(false); }} className="flex items-center p-3 border border-slate-200 rounded-xl hover:border-sky-400 hover:shadow-md transition text-left bg-white group">
+                        <div className="bg-sky-50 p-2.5 rounded-lg mr-3 group-hover:bg-sky-100 transition"><BookOpen size={16} className="text-sky-600"/></div>
+                        <div><div className="text-xs font-extrabold text-slate-800">지침 (Guideline)</div><div className="text-[10px] text-slate-500 mt-0.5 font-medium">매뉴얼, 가이드</div></div>
+                     </button>
+                     <button onClick={() => { addNode('Deliverable'); setIsAddModalOpen(false); }} className="flex items-center p-3 border border-slate-200 rounded-xl hover:border-sky-300 hover:shadow-md transition text-left bg-white group">
+                        <div className="bg-sky-50 p-2.5 rounded-lg mr-3 group-hover:bg-sky-100 transition"><ClipboardCheck size={16} className="text-sky-500"/></div>
+                        <div><div className="text-xs font-extrabold text-slate-800">산출물 (Deliverable)</div><div className="text-[10px] text-slate-500 mt-0.5 font-medium">보고서, 양식 등</div></div>
+                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center space-y-4 bg-slate-50/50">
-                  <div className="bg-white p-4 rounded-full shadow-sm border border-slate-100"><Type size={32} className="text-slate-300" /></div>
-                  <p className="text-sm font-bold text-slate-500 leading-relaxed">맵에서 노드나 선을 클릭하면<br/>해당 객체의 속성을 편집할 수 있습니다.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {isAddModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl shadow-2xl w-[540px] overflow-hidden border border-slate-200">
-              <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h3 className="font-extrabold text-lg text-slate-800">새로운 객체 추가</h3>
-                <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="p-6">
-                
-                <h4 className="text-xs font-extrabold text-slate-400 mb-3 uppercase tracking-wide">프로젝트 / 과제</h4>
-                <div className="grid grid-cols-1 mb-6">
-                   <button onClick={() => { addNode('Task'); setIsAddModalOpen(false); }} className="flex items-center p-4 border border-slate-200 rounded-xl hover:border-blue-500 hover:shadow-lg transition text-left bg-white group">
-                      <div className="bg-blue-50 p-3 rounded-xl mr-4 group-hover:bg-blue-100 transition"><Briefcase size={20} className="text-blue-600"/></div>
-                      <div><div className="text-sm font-extrabold text-slate-800 mb-0.5">과제 (Task)</div><div className="text-xs text-slate-500 font-medium">최상위 프로젝트, 단위 업무, AX 과제 등</div></div>
-                   </button>
-                </div>
-
-                <h4 className="text-xs font-extrabold text-slate-400 mb-3 uppercase tracking-wide">구조형 객체 (데이터/시스템)</h4>
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                   <button onClick={() => { addNode('Data'); setIsAddModalOpen(false); }} className="flex flex-col items-center p-5 border border-slate-200 rounded-xl hover:border-sky-500 hover:shadow-lg transition text-center bg-white group">
-                      <div className="bg-sky-50 p-3 rounded-xl mb-3 group-hover:bg-sky-100 transition"><Database size={24} className="text-sky-600"/></div>
-                      <div className="text-sm font-extrabold text-slate-800 mb-1">데이터 (Data)</div>
-                      <div className="text-[10px] text-slate-500 font-medium">DB, 테이블, 정형 데이터</div>
-                   </button>
-                   <button onClick={() => { addNode('System'); setIsAddModalOpen(false); }} className="flex flex-col items-center p-5 border border-slate-200 rounded-xl hover:border-indigo-500 hover:shadow-lg transition text-center bg-white group">
-                      <div className="bg-indigo-50 p-3 rounded-xl mb-3 group-hover:bg-indigo-100 transition"><Monitor size={24} className="text-indigo-600"/></div>
-                      <div className="text-sm font-extrabold text-slate-800 mb-1">시스템 (System)</div>
-                      <div className="text-[10px] text-slate-500 font-medium">내부/외부 IT 인프라</div>
-                   </button>
-                </div>
-
-                <h4 className="text-xs font-extrabold text-slate-400 mb-3 uppercase tracking-wide">문서형 객체 (가이드/규정)</h4>
-                <div className="grid grid-cols-2 gap-3">
-                   <button onClick={() => { addNode('Law'); setIsAddModalOpen(false); }} className="flex items-center p-3 border border-slate-200 rounded-xl hover:border-red-500 hover:shadow-md transition text-left bg-white group">
-                      <div className="bg-red-50 p-2.5 rounded-lg mr-3 group-hover:bg-red-100 transition"><Scale size={16} className="text-red-600"/></div>
-                      <div><div className="text-xs font-extrabold text-slate-800">국가법령 (Law)</div><div className="text-[10px] text-slate-500 mt-0.5 font-medium">외부 법적 구속력</div></div>
-                   </button>
-                   <button onClick={() => { addNode('Regulation'); setIsAddModalOpen(false); }} className="flex items-center p-3 border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-md transition text-left bg-white group">
-                      <div className="bg-blue-50 p-2.5 rounded-lg mr-3 group-hover:bg-blue-100 transition"><ShieldCheck size={16} className="text-blue-600"/></div>
-                      <div><div className="text-xs font-extrabold text-slate-800">사내규정 (Regulation)</div><div className="text-[10px] text-slate-500 mt-0.5 font-medium">내부 운영 기준</div></div>
-                   </button>
-                   <button onClick={() => { addNode('Guideline'); setIsAddModalOpen(false); }} className="flex items-center p-3 border border-slate-200 rounded-xl hover:border-sky-400 hover:shadow-md transition text-left bg-white group">
-                      <div className="bg-sky-50 p-2.5 rounded-lg mr-3 group-hover:bg-sky-100 transition"><BookOpen size={16} className="text-sky-600"/></div>
-                      <div><div className="text-xs font-extrabold text-slate-800">지침 (Guideline)</div><div className="text-[10px] text-slate-500 mt-0.5 font-medium">매뉴얼, 가이드</div></div>
-                   </button>
-                   <button onClick={() => { addNode('Deliverable'); setIsAddModalOpen(false); }} className="flex items-center p-3 border border-slate-200 rounded-xl hover:border-sky-300 hover:shadow-md transition text-left bg-white group">
-                      <div className="bg-sky-50 p-2.5 rounded-lg mr-3 group-hover:bg-sky-100 transition"><ClipboardCheck size={16} className="text-sky-500"/></div>
-                      <div><div className="text-xs font-extrabold text-slate-800">산출물 (Deliverable)</div><div className="text-[10px] text-slate-500 mt-0.5 font-medium">보고서, 양식 등</div></div>
-                   </button>
-                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
-    );
-  }
+          )}
 
-  const AdminView = ({ users, onAddUser, onUpdateUser, onDeleteUser }) => {
-    const [editingUser, setEditingUser] = useState(null);
-
-    const handleSave = (e) => {
-      e.preventDefault();
-      if (editingUser.isNew) {
-        const newUser = { ...editingUser };
-        delete newUser.isNew;
-        delete newUser.originalId;
-        const success = onAddUser(newUser);
-        if (success !== false) setEditingUser(null);
-      } else {
-        const updated = { ...editingUser };
-        delete updated.originalId;
-        const success = onUpdateUser(updated, editingUser.originalId);
-        if (success !== false) setEditingUser(null);
-      }
-    };
-
-    const handleAddClick = () => {
-      setEditingUser({ id: '', pw: '', name: '', dept: '', role: 'Editor', needPwChange: true, isNew: true });
-    };
-
-    return (
-      <div className="max-w-5xl mx-auto space-y-6 relative">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-slate-800">사용자 계정 및 권한 관리</h2>
-          <button onClick={handleAddClick} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-blue-700 flex items-center shadow-md transition">
-            <Plus size={16} className="mr-2" /> 신규 계정 추가
-          </button>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-600 border-b">
-              <tr>
-                <th className="px-6 py-4 font-bold">ID (사번)</th>
-                <th className="px-6 py-4 font-bold">이름</th>
-                <th className="px-6 py-4 font-bold">소속 부서</th>
-                <th className="px-6 py-4 font-bold">시스템 권한</th>
-                <th className="px-6 py-4 font-bold">계정 상태</th>
-                <th className="px-6 py-4 font-bold text-right">관리</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {users.map(u => (
-                <tr key={u.id} className="hover:bg-slate-50 transition">
-                  <td className="px-6 py-4 font-extrabold text-slate-800">{u.id}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center font-bold text-slate-700">
-                      <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs mr-3 shadow-sm">
-                        {u.name.charAt(0)}
-                      </div>
-                      {u.name}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-slate-500 font-medium">{u.dept}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-md text-xs font-bold shadow-sm border ${u.role === 'System Admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {u.needPwChange ? 
-                      <span className="text-amber-500 font-bold text-xs flex items-center"><AlertCircle size={14} className="mr-1"/>비번 변경 대기</span> : 
-                      <span className="text-blue-500 font-bold text-xs flex items-center"><CheckCircle size={14} className="mr-1"/>활성</span>
-                    }
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button onClick={() => setEditingUser({...u, originalId: u.id})} className="text-blue-600 hover:text-blue-800 font-bold text-xs mr-3 transition">수정</button>
-                    <button onClick={() => onDeleteUser(u.id)} className="text-red-500 hover:text-red-700 font-bold text-xs transition disabled:opacity-30" disabled={u.id==='admin'}>삭제</button>
-                  </td>
+      );
+    };
+
+    // --- Admin View Component ---
+    const AdminView = ({ users, onAddUser, onUpdateUser, onDeleteUser }) => {
+      const [editingUser, setEditingUser] = useState(null);
+
+      const handleSave = (e) => {
+        e.preventDefault();
+        if (editingUser.isNew) {
+          const newUser = { ...editingUser };
+          delete newUser.isNew;
+          delete newUser.originalId;
+          const success = onAddUser(newUser);
+          if (success !== false) setEditingUser(null);
+        } else {
+          const updated = { ...editingUser };
+          delete updated.originalId;
+          const success = onUpdateUser(updated, editingUser.originalId);
+          if (success !== false) setEditingUser(null);
+        }
+      };
+
+      const handleAddClick = () => {
+        setEditingUser({ id: '', pw: '', name: '', dept: '', role: 'Editor', needPwChange: true, isNew: true });
+      };
+
+      return (
+        <div className="max-w-5xl mx-auto space-y-6 relative">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-slate-800">사용자 계정 및 권한 관리</h2>
+            <button onClick={handleAddClick} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-blue-700 flex items-center shadow-md transition">
+              <Plus size={16} className="mr-2" /> 신규 계정 추가
+            </button>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-slate-600 border-b">
+                <tr>
+                  <th className="px-6 py-4 font-bold">ID (사번)</th>
+                  <th className="px-6 py-4 font-bold">이름</th>
+                  <th className="px-6 py-4 font-bold">소속 부서</th>
+                  <th className="px-6 py-4 font-bold">시스템 권한</th>
+                  <th className="px-6 py-4 font-bold">계정 상태</th>
+                  <th className="px-6 py-4 font-bold text-right">관리</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {editingUser && (
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
-              <h3 className="text-lg font-extrabold mb-6 text-slate-800 border-b pb-3">{editingUser.isNew ? '신규 계정 추가' : '계정 정보 수정'}</h3>
-              <form onSubmit={handleSave} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">ID (사번/계정명)</label>
-                  <input 
-                    type="text" value={editingUser.id} 
-                    onChange={e => {
-                      if (editingUser.isNew) {
-                        setEditingUser({...editingUser, id: e.target.value});
-                      } else {
-                        setEditingUser({...editingUser, id: e.target.value});
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {users.map(u => (
+                  <tr key={u.id} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-4 font-extrabold text-slate-800">{u.id}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center font-bold text-slate-700">
+                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs mr-3 shadow-sm">
+                          {u.name.charAt(0)}
+                        </div>
+                        {u.name}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-slate-500 font-medium">{u.dept}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-md text-xs font-bold shadow-sm border ${u.role === 'System Admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {u.needPwChange ? 
+                        <span className="text-amber-500 font-bold text-xs flex items-center"><AlertCircle size={14} className="mr-1"/>비번 변경 대기</span> : 
+                        <span className="text-blue-500 font-bold text-xs flex items-center"><CheckCircle size={14} className="mr-1"/>활성</span>
                       }
-                    }} 
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium disabled:opacity-50 disabled:bg-slate-50" 
-                    placeholder="사번 입력" required
-                    disabled={editingUser.originalId === 'admin'}
-                  />
-                  {editingUser.originalId === 'admin' && <p className="text-[10px] text-red-500 mt-1">최고 관리자 ID는 변경할 수 없습니다.</p>}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">비밀번호 {editingUser.isNew ? '(초기)' : '(변경할 경우에만 입력)'}</label>
-                  <input 
-                    type="text" value={editingUser.pw} 
-                    onChange={e => setEditingUser({...editingUser, pw: e.target.value})} 
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium disabled:opacity-50 disabled:bg-slate-50" 
-                    placeholder={editingUser.isNew ? "초기 비밀번호 입력" : "변경 시에만 입력 (미입력시 유지)"} 
-                    required={editingUser.isNew}
-                    disabled={editingUser.originalId === 'admin'}
-                  />
-                  {editingUser.originalId === 'admin' && <p className="text-[10px] text-red-500 mt-1">최고 관리자 비밀번호는 변경할 수 없습니다. (마이페이지 이용)</p>}
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">이름</label>
-                  <input 
-                    type="text" value={editingUser.name} 
-                    onChange={e => setEditingUser({...editingUser, name: e.target.value})} 
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">소속 부서</label>
-                  <input 
-                    type="text" value={editingUser.dept} 
-                    onChange={e => setEditingUser({...editingUser, dept: e.target.value})} 
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">시스템 권한 (Role)</label>
-                  <select 
-                    value={editingUser.role} 
-                    onChange={e => setEditingUser({...editingUser, role: e.target.value})} 
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                  >
-                    <option value="System Admin">System Admin (전체 권한)</option>
-                    <option value="Editor">Editor (편집자)</option>
-                    <option value="Viewer">Viewer (조회 전용)</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-center pt-2 bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
-                  <input 
-                    type="checkbox" id="pwReset" 
-                    checked={editingUser.needPwChange} 
-                    onChange={e => setEditingUser({...editingUser, needPwChange: e.target.checked})} 
-                    className="mr-2" 
-                    disabled={editingUser.originalId === 'admin'}
-                  />
-                  <label htmlFor="pwReset" className="text-xs font-bold text-slate-700 cursor-pointer leading-tight">
-                    초기 접속 시 비밀번호 변경 강제<br/><span className="text-[10px] text-slate-500 font-medium">(사용자가 처음 로그인 시 새 비밀번호를 설정해야 합니다)</span>
-                  </label>
-                </div>
-
-                <div className="flex justify-end space-x-2 mt-8 pt-4 border-t border-slate-100">
-                  <button 
-                    type="button" onClick={() => setEditingUser(null)} 
-                    className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition"
-                  >
-                    취소
-                  </button>
-                  <button 
-                    type="submit" 
-                    className="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition shadow-md"
-                  >
-                    저장
-                  </button>
-                </div>
-              </form>
-            </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => setEditingUser({...u, originalId: u.id})} className="text-blue-600 hover:text-blue-800 font-bold text-xs mr-3 transition">수정</button>
+                      <button onClick={() => onDeleteUser(u.id)} className="text-red-500 hover:text-red-700 font-bold text-xs transition disabled:opacity-30" disabled={u.id==='admin'}>삭제</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
-    );
-  };
 
-  const root = ReactDOM.createRoot(document.getElementById('root'));
-  root.render(<TaskOntologyApp />);
-</script>
+          {editingUser && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
+                <h3 className="text-lg font-extrabold mb-6 text-slate-800 border-b pb-3">{editingUser.isNew ? '신규 계정 추가' : '계정 정보 수정'}</h3>
+                <form onSubmit={handleSave} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">ID (사번/계정명)</label>
+                    <input 
+                      type="text" value={editingUser.id} 
+                      onChange={e => {
+                        if (editingUser.isNew) {
+                          setEditingUser({...editingUser, id: e.target.value});
+                        } else {
+                          setEditingUser({...editingUser, id: e.target.value});
+                        }
+                      }} 
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium disabled:opacity-50 disabled:bg-slate-50" 
+                      placeholder="사번 입력" required
+                      disabled={editingUser.originalId === 'admin'}
+                    />
+                    {editingUser.originalId === 'admin' && <p className="text-[10px] text-red-500 mt-1">최고 관리자 ID는 변경할 수 없습니다.</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">비밀번호 {editingUser.isNew ? '(초기)' : '(변경할 경우에만 입력)'}</label>
+                    <input 
+                      type="text" value={editingUser.pw} 
+                      onChange={e => setEditingUser({...editingUser, pw: e.target.value})} 
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium disabled:opacity-50 disabled:bg-slate-50" 
+                      placeholder={editingUser.isNew ? "초기 비밀번호 입력" : "변경 시에만 입력 (미입력시 유지)"} 
+                      required={editingUser.isNew}
+                      disabled={editingUser.originalId === 'admin'}
+                    />
+                    {editingUser.originalId === 'admin' && <p className="text-[10px] text-red-500 mt-1">최고 관리자 비밀번호는 변경할 수 없습니다. (마이페이지 이용)</p>}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">이름</label>
+                    <input 
+                      type="text" value={editingUser.name} 
+                      onChange={e => setEditingUser({...editingUser, name: e.target.value})} 
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">소속 부서</label>
+                    <input 
+                      type="text" value={editingUser.dept} 
+                      onChange={e => setEditingUser({...editingUser, dept: e.target.value})} 
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">시스템 권한 (Role)</label>
+                    <select 
+                      value={editingUser.role} 
+                      onChange={e => setEditingUser({...editingUser, role: e.target.value})} 
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                    >
+                      <option value="System Admin">System Admin (전체 권한)</option>
+                      <option value="Editor">Editor (편집자)</option>
+                      <option value="Viewer">Viewer (조회 전용)</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex items-center pt-2 bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
+                    <input 
+                      type="checkbox" id="pwReset" 
+                      checked={editingUser.needPwChange} 
+                      onChange={e => setEditingUser({...editingUser, needPwChange: e.target.checked})} 
+                      className="mr-2" 
+                      disabled={editingUser.originalId === 'admin'}
+                    />
+                    <label htmlFor="pwReset" className="text-xs font-bold text-slate-700 cursor-pointer leading-tight">
+                      초기 접속 시 비밀번호 변경 강제<br/><span className="text-[10px] text-slate-500 font-medium">(사용자가 처음 로그인 시 새 비밀번호를 설정해야 합니다)</span>
+                    </label>
+                  </div>
+
+                  <div className="flex justify-end space-x-2 mt-8 pt-4 border-t border-slate-100">
+                    <button 
+                      type="button" onClick={() => setEditingUser(null)} 
+                      className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition"
+                    >
+                      취소
+                    </button>
+                    <button 
+                      type="submit" 
+                      className="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition shadow-md"
+                    >
+                      저장
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<TaskOntologyApp />);
+  </script>
 </body>
 </html>
