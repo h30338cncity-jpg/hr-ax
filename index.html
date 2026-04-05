@@ -1049,9 +1049,13 @@
         );
       };
 
+      const selectedNode = selectionType === 'node' ? nodes.find(n => n.id === selectedId) : null;
+      const selectedEdge = selectionType === 'edge' ? edges.find(e => e.id === selectedId) : null;
+
       return (
         <div className="flex h-full rounded-2xl bg-white shadow-lg border border-slate-200 overflow-hidden flex-col relative">
           
+          {/* 상단 툴바 */}
           <div className="bg-white border-b border-slate-200 p-2.5 flex items-center justify-between z-10 px-5 shrink-0 shadow-sm relative">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-1 border-r border-slate-200 pr-4">
@@ -1535,9 +1539,8 @@
 
         </div>
       );
-    };
+    }
 
-    // --- Admin View Component ---
     const AdminView = ({ users, onAddUser, onUpdateUser, onDeleteUser }) => {
       const [editingUser, setEditingUser] = useState(null);
 
