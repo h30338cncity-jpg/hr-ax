@@ -224,6 +224,88 @@
       );
     };
 
+    // ★ 상태(Status) 전용 입력 컴포넌트 ★
+    const StatusInput = ({ val, nodeId, updateNodeMeta }) => {
+      const options = ['미진행', '진행중', '보류', '완료'];
+      const isCustom = val && !options.includes(val);
+      const [mode, setMode] = useState(isCustom ? 'custom' : 'select');
+
+      const handleSelect = (e) => {
+        if (e.target.value === 'custom') {
+          setMode('custom');
+          updateNodeMeta(nodeId, '상태', '');
+        } else {
+          setMode('select');
+          updateNodeMeta(nodeId, '상태', e.target.value);
+        }
+      };
+
+      return (
+        <div className="space-y-1.5 w-full">
+          <select
+            className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 cursor-pointer transition"
+            value={mode === 'custom' ? 'custom' : (val || '미진행')}
+            onChange={handleSelect}
+          >
+            {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            <option value="custom">직접 입력 (목록에 없음)...</option>
+          </select>
+
+          {mode === 'custom' && (
+             <input
+               type="text"
+               className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium mt-1"
+               value={val || ''} onChange={(e) => updateNodeMeta(nodeId, '상태', e.target.value)}
+               placeholder="사용자 정의 상태를 입력하세요"
+             />
+          )}
+        </div>
+      );
+    };
+
+    // ★ 공통 가이드 & 커스텀 입력 컴포넌트 (데이터형태/산출물형태) ★
+    const CustomSelectWithGuide = ({ val, nodeId, metaKey, guidesObj, updateNodeMeta, placeholder }) => {
+      const isCustom = val && !Object.keys(guidesObj).includes(val);
+      const [mode, setMode] = useState(isCustom ? 'custom' : 'select');
+
+      const handleSelect = (e) => {
+        if (e.target.value === 'custom') {
+          setMode('custom');
+          updateNodeMeta(nodeId, metaKey, '');
+        } else {
+          setMode('select');
+          updateNodeMeta(nodeId, metaKey, e.target.value);
+        }
+      };
+
+      return (
+        <div className="space-y-1.5 w-full">
+          <select
+            className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-bold text-slate-700 cursor-pointer transition"
+            value={mode === 'custom' ? 'custom' : (val || '')}
+            onChange={handleSelect}
+          >
+            <option value="">선택...</option>
+            {Object.keys(guidesObj).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            <option value="custom">직접 입력 (목록에 없음)...</option>
+          </select>
+
+          {mode === 'custom' && (
+             <input
+               type="text"
+               className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-medium mt-1"
+               value={val || ''} onChange={(e) => updateNodeMeta(nodeId, metaKey, e.target.value)}
+               placeholder={placeholder || "직접 입력하세요"}
+             />
+          )}
+
+          {mode === 'select' && val && guidesObj[val] && (
+            <p className="text-[10px] text-slate-500 font-medium bg-slate-100 p-1.5 rounded leading-tight">💡 {guidesObj[val]}</p>
+          )}
+        </div>
+      );
+    };
+
     // --- [Main App Component] ---
     function TaskOntologyApp() {
       const [usersDb, setUsersDb] = useState(() => {
@@ -1204,79 +1286,41 @@
           
           return (
             <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <input 
-                  type="text" 
-                  className="flex-1 text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-medium transition" 
-                  value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
-                  placeholder="직접 입력 (쉼표로 구분)" 
-                />
-                <select 
-                  className="w-10 text-sm border border-slate-300 bg-slate-50 px-2 py-2 rounded-lg outline-none focus:border-blue-500 cursor-pointer font-bold text-slate-600 transition" 
-                  onChange={(e) => { if(e.target.value) toggleUser(e.target.value); e.target.value=''; }}
-                  defaultValue=""
-                  title="계정 목록에서 추가"
-                >
-                  <option value="">+</option>
-                  {[...(users || [])].sort((a, b) => a.name.localeCompare(b.name, 'ko-KR')).map(u => <option key={u.id} value={u.name}>{u.name} ({u.dept})</option>)}
-                </select>
-              </div>
-            </div>
-          );
-        }
-
-        // 상태: 수동입력 가능한 콤보박스 (Datalist)
-        if (key === '상태') {
-          return (
-            <div className="relative">
-               <input 
-                 type="text" list={`dl-status-${nodeId}`}
-                 className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-bold text-slate-700 transition" 
-                 value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
-                 placeholder="상태를 선택하거나 입력하세요" 
-               />
-               <datalist id={`dl-status-${nodeId}`}>
-                 <option value="미진행" />
-                 <option value="진행중" />
-                 <option value="보류" />
-                 <option value="완료" />
-               </datalist>
+              <select 
+                className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer font-bold text-slate-600 transition" 
+                onChange={(e) => { if(e.target.value) toggleUser(e.target.value); e.target.value=''; }}
+                defaultValue=""
+              >
+                <option value="">+ 계정 선택 (목록에서 추가)</option>
+                {[...(users || [])].sort((a, b) => a.name.localeCompare(b.name, 'ko-KR')).map(u => <option key={u.id} value={u.name}>{u.name} ({u.dept})</option>)}
+              </select>
+              <input 
+                type="text" 
+                className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-medium transition" 
+                value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
+                placeholder="또는 직접 입력 (쉼표로 구분)" 
+              />
+              {currentUsers.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {currentUsers.map(u => (
+                    <span key={u} className="inline-flex items-center px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-bold shadow-sm">
+                      {u} <button onClick={() => toggleUser(u)} className="ml-1 hover:text-blue-900 bg-blue-200 rounded-full p-0.5"><X size={10}/></button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           );
         }
 
         // 데이터형태: 수동입력 가능한 콤보박스
         if (key === '데이터형태') {
-          return (
-            <div className="relative">
-               <input 
-                 type="text" list={`dl-data-${nodeId}`}
-                 className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-medium transition" 
-                 value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
-                 placeholder="데이터 형태를 선택하거나 입력하세요" 
-               />
-               <datalist id={`dl-data-${nodeId}`}>
-                 {Object.keys(dataTypeGuides).map(opt => <option key={opt} value={opt} />)}
-               </datalist>
-            </div>
-          );
+          return <CustomSelectWithGuide val={val} nodeId={nodeId} metaKey={key} guidesObj={dataTypeGuides} updateNodeMeta={updateNodeMeta} placeholder="원하는 데이터 형태를 직접 입력하세요" />;
         }
 
         // 산출물형태: 수동입력 가능한 콤보박스
         if (key === '산출물형태') {
-          return (
-            <div className="relative">
-               <input 
-                 type="text" list={`dl-del-${nodeId}`}
-                 className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-medium transition" 
-                 value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
-                 placeholder="산출물 형태를 선택하거나 입력하세요" 
-               />
-               <datalist id={`dl-del-${nodeId}`}>
-                 {Object.keys(deliverableTypeGuides).map(opt => <option key={opt} value={opt} />)}
-               </datalist>
-            </div>
-          );
+          return <CustomSelectWithGuide val={val} nodeId={nodeId} metaKey={key} guidesObj={deliverableTypeGuides} updateNodeMeta={updateNodeMeta} placeholder="원하는 산출물 형태를 직접 입력하세요" />;
         }
 
         // 긴 텍스트 필드
@@ -1412,7 +1456,6 @@
                     <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.1" />
                   </filter>
 
-                  {/* 화살표 마커 (단방향 및 양방향 대응) */}
                   <marker id="arrow-green" viewBox="0 0 10 10" refX="24" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                     <path d="M 0 0 L 10 5 L 0 10 z" fill="#10b981" />
                   </marker>
@@ -1486,7 +1529,7 @@
                     // 방향성에 따른 화살표 표시 로직
                     const dir = edge.direction || 'forward';
                     const showEndMarker = (dir === 'forward' || dir === 'both') ? `url(#${marker})` : 'none';
-                    const showStartMarker = (dir === 'backward' || dir === 'both') ? `url(#${marker})` : 'none'; // orient="auto-start-reverse" 덕분에 같은 마커 사용 가능
+                    const showStartMarker = (dir === 'backward' || dir === 'both') ? `url(#${marker})` : 'none';
 
                     const displayText = edge.method === 'manual' ? (edge.label || '관계 입력') : methodNames[edge.method];
 
@@ -1548,12 +1591,11 @@
                     }
 
                     const status = node.meta?.상태 || '미진행';
-                    // 컬러 기본 폴백 (수동 입력 시)
                     let badgeColor = '#94a3b8'; 
                     if (status === '진행중') badgeColor = '#f97316'; 
                     else if (status === '완료') badgeColor = '#3b82f6'; 
                     else if (status === '보류') badgeColor = '#ef4444'; 
-                    else if (!['미진행','진행중','보류','완료'].includes(status)) badgeColor = '#64748b'; // 사용자 입력 커스텀 상태 색상
+                    else if (!['미진행','진행중','보류','완료'].includes(status)) badgeColor = '#64748b'; 
 
                     return (
                       <g 
@@ -1646,21 +1688,7 @@
                       
                       <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-inner">
                         <label className="text-xs font-bold text-slate-700 block mb-1.5">진행 상태 (Status)</label>
-                        {/* 상태: 수동입력 가능한 콤보박스로 변경됨 (위 renderMetaInput 함수가 아닌 자체 렌더) */}
-                        <div className="relative">
-                           <input 
-                             type="text" list="dl-main-status"
-                             className="w-full text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 transition" 
-                             value={selectedNodeObj.meta?.상태 || ''} onChange={(e) => updateNodeMeta(selectedNodeObj.id, '상태', e.target.value)} 
-                             placeholder="상태를 선택하거나 자유롭게 적어주세요" 
-                           />
-                           <datalist id="dl-main-status">
-                             <option value="미진행" />
-                             <option value="진행중" />
-                             <option value="보류" />
-                             <option value="완료" />
-                           </datalist>
-                        </div>
+                        <StatusInput val={selectedNodeObj.meta?.상태} nodeId={selectedNodeObj.id} updateNodeMeta={updateNodeMeta} />
                       </div>
                     </div>
                     
@@ -1775,7 +1803,7 @@
                   </div>
                 ) : selectionType === 'edge' && selectedEdgeObj ? (
                   <div className="flex-1 flex flex-col bg-white">
-                    {/* ★ 신규: 현재 연결선 정보 헤더 (직관적 표시) ★ */}
+                    {/* ★ 현재 연결선 정보 헤더 (직관적 표시) ★ */}
                     <div className="p-5 border-b border-slate-200 bg-slate-100 shrink-0">
                       <span className="text-xs font-extrabold text-indigo-600 uppercase tracking-wider mb-3 block">연결선 설정 (Link)</span>
                       
@@ -1810,7 +1838,6 @@
                           <option value="log">📈 시스템 로그 분석</option>
                         </select>
 
-                        {/* ★ 신규: 양방향 설정 드롭다운 ★ */}
                         <select
                           value={selectedEdgeObj.direction || 'forward'} onChange={(e) => updateEdge(selectedEdgeObj.id, 'direction', e.target.value)}
                           className="w-full text-xs font-extrabold text-slate-700 bg-white border border-slate-300 rounded-lg outline-none px-2 py-2 cursor-pointer transition focus:ring-2 focus:ring-blue-500"
