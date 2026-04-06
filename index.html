@@ -122,7 +122,7 @@
       Law: '#1e3a8a',        
       Regulation: '#0284c7', 
       Guideline: '#38bdf8',  
-      Deliverable: '#8b5cf6' // Deliverable 전용 컬러 (보라/남색 계열)
+      Deliverable: '#8b5cf6' 
     };
 
     const typeLabels = {
@@ -182,8 +182,7 @@
       '문서 (PDF/Word)': '텍스트 위주의 비정형 산출물 문서'
     };
 
-    // ★ 스윔레인 6개(산출물 분리 및 과제 최하단 배치) ★
-    const LANE_H = 135; // 6개 층을 맞추기 위해 높이 소폭 조정
+    const LANE_H = 135; 
     const SWIMLANES = [
       { id: 'l_law', title: '🏛️ 국가법령', types: ['Law'], y: 0, h: LANE_H, bg: 'transparent', color: '#1e40af' },
       { id: 'l_reg', title: '🏢 사내규정', types: ['Regulation'], y: LANE_H, h: LANE_H, bg: 'rgba(241, 245, 249, 0.6)', color: '#0369a1' },
@@ -603,7 +602,6 @@
       const connectedSystemCount = connectedNodes.filter(n => n.type === 'System').length;
       const connectedDocCount = connectedNodes.filter(n => ['Law', 'Regulation', 'Guideline', 'Deliverable'].includes(n.type)).length;
 
-      // ★ 내 과제 필터링 및 D-Day 정렬 로직 ★
       const myTasks = myNodes.filter(n => n.type === 'Task').sort((a, b) => {
         const dateA = a.meta?.종료일 ? new Date(a.meta.종료일).getTime() : Infinity;
         const dateB = b.meta?.종료일 ? new Date(b.meta.종료일).getTime() : Infinity;
@@ -638,7 +636,6 @@
             </div>
           </div>
 
-          {/* ★ 신설: 나의 과제 진행 현황 (D-Day 표출) ★ */}
           <h2 className="text-lg font-bold text-slate-800 mt-8 flex items-center">
             <CalendarIcon size={20} className="mr-2 text-blue-500" /> 나의 과제 진행 현황 <span className="text-sm font-medium text-slate-400 ml-2">(마감일 임박순)</span>
           </h2>
@@ -740,7 +737,9 @@
       const [isPanelOpen, setIsPanelOpen] = useState(false); 
       const [isAddModalOpen, setIsAddModalOpen] = useState(false);
       
+      // ★ 엣지 호버 상태 추가 ★
       const [hoveredNode, setHoveredNode] = useState(null);
+      const [hoveredEdge, setHoveredEdge] = useState(null);
 
       const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
       const [isPanning, setIsPanning] = useState(false);
@@ -825,20 +824,17 @@
       }, [handleSaveMap, undo, redo]);
 
 
-      // ★ 스마트 자동 정렬 (Barycentric Clustering) ★
       const handleAutoAlign = () => {
         saveState();
         
         let newNodes = [...nodes];
         const gapX = 180;   
         
-        // 연결 관계를 분석하여 이상적인 위치(targetX)를 여러 번 반복 계산
         for (let pass = 0; pass < 3; pass++) {
           SWIMLANES.forEach(lane => {
             const laneNodes = newNodes.filter(n => lane.types.includes(n.type));
             if (laneNodes.length === 0) return;
 
-            // 각 노드에 연결된 이웃들의 x좌표 평균값을 계산
             laneNodes.forEach(node => {
               const connected = edges.filter(e => e.source === node.id || e.target === node.id);
               if (connected.length > 0) {
@@ -849,24 +845,21 @@
                   if (neighbor) sumX += neighbor.x;
                 });
                 node.targetX = sumX / connected.length;
-                node.weight = connected.length; // 연결이 많을수록 우선순위 부여
+                node.weight = connected.length; 
               } else {
                 node.targetX = node.x;
                 node.weight = 0;
               }
             });
 
-            // 이상적인 X좌표(targetX) 순서로 정렬하되, 같으면 가중치(weight) 우선
             laneNodes.sort((a, b) => {
               if (Math.abs(a.targetX - b.targetX) > 1) return a.targetX - b.targetX;
               return b.weight - a.weight;
             });
 
-            // 정렬된 순서를 바탕으로 다시 균등하게 배치
             const centerY = lane.y + (lane.h / 2);
             const totalWidth = (laneNodes.length - 1) * gapX;
             
-            // 화면 중앙에 예쁘게 오도록 시작 X점 계산
             const mapContainer = mapContainerRef.current;
             const centerScreenX = mapContainer ? mapContainer.clientWidth / 2 : 800;
             const laneStartX = Math.max(100, centerScreenX - (totalWidth / 2));
@@ -1219,8 +1212,8 @@
         );
       };
 
-      const selectedNode = selectionType === 'node' ? nodes.find(n => n.id === selectedId) : null;
-      const selectedEdge = selectionType === 'edge' ? edges.find(e => e.id === selectedId) : null;
+      const selectedNodeObj = selectionType === 'node' ? nodes.find(n => n.id === selectedId) : null;
+      const selectedEdgeObj = selectionType === 'edge' ? edges.find(e => e.id === selectedId) : null;
 
       return (
         <div className="flex h-full rounded-2xl bg-white shadow-lg border border-slate-200 overflow-hidden flex-col relative">
@@ -1293,7 +1286,6 @@
 
           <div className="flex flex-1 relative min-h-0 bg-slate-50 overflow-hidden no-select">
             
-            {/* SVG Canvas - 줌 및 팬 적용을 위한 내부 그룹(g) 추가 */}
             <div 
               id="map-container"
               ref={mapContainerRef}
@@ -1346,34 +1338,79 @@
                     </g>
                   ))}
 
-                  {/* Edges */}
+                  {/* Edges (연결선) - 베지에 곡선 적용 및 평상시 선 다이어트 */}
                   {visibleEdges.map((edge) => {
                     const s = visibleNodes.find(n => n.id === edge.source);
                     const t = visibleNodes.find(n => n.id === edge.target);
                     if (!s || !t) return null;
+                    
                     const isSelected = selectedId === edge.id && selectionType === 'edge';
-                    const isHoverRelated = isEdgeConnectedToHover(edge);
+                    const isHoverRelated = hoveredNode ? isEdgeConnectedToHover(edge) : false;
+                    const isThisEdgeHovered = hoveredEdge === edge.id;
+                    
+                    // 활성화(하이라이트) 조건: 노드 호버, 선 호버, 또는 선 선택 시
+                    const isActive = isSelected || isThisEdgeHovered || isHoverRelated;
                     
                     const hasRule = edge.method !== 'manual' || (edge.logic && edge.logic.trim() !== '');
-                    const edgeColor = hasRule ? '#10b981' : '#ef4444';
+                    const edgeColor = hasRule ? '#10b981' : '#ef4444'; // 초록 or 빨강
                     const strokeColor = isSelected ? '#3b82f6' : edgeColor;
                     const marker = isSelected ? 'arrow-blue-selected' : (hasRule ? 'arrow-green' : 'arrow-red');
 
                     const displayText = edge.method === 'manual' ? (edge.label || '관계 입력') : methodNames[edge.method];
 
+                    // ★ 베지에 곡선 경로(Path) 계산 로직 ★
+                    let pathD, midX, midY;
+                    const isSameLane = Math.abs(s.y - t.y) < 10;
+
+                    if (isSameLane) {
+                        // 같은 층일 경우: 위로 둥글게 호(Arc)를 그림
+                        const arcH = 60;
+                        pathD = `M ${s.x} ${s.y} Q ${(s.x + t.x)/2} ${s.y - arcH}, ${t.x} ${t.y}`;
+                        midX = (s.x + t.x) / 2;
+                        midY = s.y - (arcH / 2);
+                    } else {
+                        // 다른 층일 경우: 부드러운 S자 곡선(Cubic Bezier)
+                        midX = (s.x + t.x) / 2;
+                        midY = (s.y + t.y) / 2;
+                        pathD = `M ${s.x} ${s.y} C ${s.x} ${midY}, ${t.x} ${midY}, ${t.x} ${t.y}`;
+                    }
+
+                    // 선 다이어트 (기본 투명도 30%, 얇게)
+                    let edgeOpacityClass = "opacity-30"; 
+                    if (isActive) edgeOpacityClass = "opacity-100";
+                    else if (hoveredNode || hoveredEdge) edgeOpacityClass = "opacity-10"; // 다른 객체 호버 시 더 흐려짐
+
+                    let strokeW = isActive ? "3" : "1.5";
+                    if (isSelected) strokeW = "4";
+
                     return (
-                      <g key={edge.id} onClick={(e) => handleEdgeClick(e, edge.id)} className={`cursor-pointer group transition-opacity duration-300 ${isHoverRelated ? 'opacity-100' : 'opacity-15'}`}>
-                        <line x1={s.x} y1={s.y} x2={t.x} y2={t.y} stroke="transparent" strokeWidth="20" />
-                        <line 
-                          x1={s.x} y1={s.y} x2={t.x} y2={t.y} 
-                          stroke={strokeColor} strokeWidth={isSelected ? "4" : "2"} 
+                      <g 
+                        key={edge.id} 
+                        onClick={(e) => handleEdgeClick(e, edge.id)} 
+                        onMouseEnter={() => setHoveredEdge(edge.id)}
+                        onMouseLeave={() => setHoveredEdge(null)}
+                        className={`cursor-pointer group transition-all duration-300 ${edgeOpacityClass}`}
+                      >
+                        {/* 1. 마우스 인식용 투명한 두꺼운 뼈대(히트박스) */}
+                        <path d={pathD} stroke="transparent" strokeWidth="20" fill="none" />
+                        
+                        {/* 2. 실제 그려지는 부드러운 곡선 */}
+                        <path 
+                          d={pathD} 
+                          stroke={strokeColor} 
+                          strokeWidth={strokeW} 
+                          fill="none"
                           markerEnd={`url(#${marker})`} 
-                          className={!isSelected ? "opacity-80 group-hover:opacity-100 transition-opacity" : ""}
+                          className="transition-all duration-300"
                         />
-                        <rect x={(s.x + t.x)/2 - 50} y={(s.y + t.y)/2 - 12} width="100" height="24" rx="12" fill="white" stroke={strokeColor} strokeWidth={isSelected ? "2" : "1.5"} filter="url(#soft-shadow)" />
-                        <text x={(s.x + t.x)/2} y={(s.y + t.y)/2 + 4} textAnchor="middle" fontSize="10" fill={isSelected ? '#1d4ed8' : '#334155'} fontWeight="bold" pointerEvents="none">
-                          {displayText}
-                        </text>
+                        
+                        {/* 3. 텍스트 배지 (평상시 숨김, 호버/선택 시에만 등장) */}
+                        <g className={`transition-opacity duration-300 ${isActive ? "opacity-100" : "opacity-0"}`}>
+                          <rect x={midX - 50} y={midY - 12} width="100" height="24" rx="12" fill="white" stroke={strokeColor} strokeWidth={isSelected ? "2" : "1.5"} filter="url(#soft-shadow)" />
+                          <text x={midX} y={midY + 4} textAnchor="middle" fontSize="10" fill={isSelected ? '#1d4ed8' : '#334155'} fontWeight="bold" pointerEvents="none">
+                            {displayText}
+                          </text>
+                        </g>
                       </g>
                     );
                   })}
@@ -1390,7 +1427,6 @@
                       strokeWidth: isSelected || isSource ? "3" : "1"
                     };
 
-                    // 노드 및 아이콘 크기 약 25% 축소 적용
                     if (node.type === 'Task') {
                       symbol = <rect x="-20" y="-20" width="40" height="40" rx="10" fill={node.color} {...strokeStyle} filter="url(#soft-shadow)" className="transition-all" />;
                     } else if (['Law', 'Regulation', 'Guideline', 'Deliverable'].includes(node.type)) {
@@ -1472,18 +1508,18 @@
 
             <div className={`bg-white border-l border-slate-200 shadow-[-10px_0_20px_-5px_rgba(0,0,0,0.05)] z-20 transition-all duration-300 flex flex-col shrink-0 ${isPanelOpen ? 'w-[400px]' : 'w-0 border-none overflow-hidden'}`}>
               <div className="w-[400px] flex flex-col h-full overflow-hidden">
-                {selectionType === 'node' && selectedNode ? (
+                {selectionType === 'node' && selectedNodeObj ? (
                   <div className="flex-1 flex flex-col min-h-0 overflow-y-auto bg-slate-50/30">
                     <div className="p-6 border-b border-slate-200 bg-white shrink-0 relative">
                       <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider mb-2 block">노드 속성 편집</span>
                       
-                      <button onClick={() => addMemo(selectedNode.id)} className="absolute top-5 right-5 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-bold transition flex items-center">
+                      <button onClick={() => addMemo(selectedNodeObj.id)} className="absolute top-5 right-5 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-bold transition flex items-center">
                         <PlusCircle size={14} className="mr-1"/> 메모 추가
                       </button>
 
                       <select 
-                        value={selectedNode.type}
-                        onChange={(e) => updateNodeType(selectedNode.id, e.target.value)}
+                        value={selectedNodeObj.type}
+                        onChange={(e) => updateNodeType(selectedNodeObj.id, e.target.value)}
                         className="text-xs font-bold text-slate-500 uppercase tracking-wider bg-slate-100 hover:bg-slate-200 cursor-pointer rounded px-2 py-1 outline-none mb-3 border border-slate-200 transition"
                       >
                         <option value="Task">과제 (Task)</option>
@@ -1495,15 +1531,15 @@
                         <option value="Deliverable">산출물 (Deliverable)</option>
                       </select>
                       <input 
-                        type="text" value={selectedNode.label} onChange={(e) => updateNode(selectedNode.id, 'label', e.target.value)}
+                        type="text" value={selectedNodeObj.label} onChange={(e) => updateNode(selectedNodeObj.id, 'label', e.target.value)}
                         className="w-full text-xl font-extrabold text-slate-800 bg-transparent border-b-2 border-dashed border-slate-300 focus:border-blue-500 outline-none pb-1.5 mb-4"
                       />
                       
                       <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-inner">
                         <label className="text-xs font-bold text-slate-700 block mb-1.5">진행 상태 (Status)</label>
                         <select
-                          value={selectedNode.meta?.상태 || '미진행'}
-                          onChange={(e) => updateNodeMeta(selectedNode.id, '상태', e.target.value)}
+                          value={selectedNodeObj.meta?.상태 || '미진행'}
+                          onChange={(e) => updateNodeMeta(selectedNodeObj.id, '상태', e.target.value)}
                           className="w-full text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 cursor-pointer transition"
                         >
                           <option value="미진행">미진행 (Not Started)</option>
@@ -1517,37 +1553,37 @@
                     <div className="p-6 space-y-5">
                       <div className="space-y-4">
                         <h4 className="text-sm font-extrabold text-slate-800 border-b border-slate-200 pb-2">필수 메타데이터</h4>
-                        {Object.keys(defaultMeta[selectedNode.type]).filter(k => k !== '상태').map((key) => (
+                        {Object.keys(defaultMeta[selectedNodeObj.type]).filter(k => k !== '상태').map((key) => (
                           <div key={key} className="flex flex-col space-y-1.5 group">
                             <label className="text-xs font-bold text-slate-500 group-focus-within:text-blue-600 transition">{key}</label>
-                            {renderMetaInput(key, selectedNode.meta[key] || '', selectedNode.id)}
+                            {renderMetaInput(key, selectedNodeObj.meta[key] || '', selectedNodeObj.id)}
                           </div>
                         ))}
                       </div>
 
-                      {Object.keys(selectedNode.meta).filter(k => !Object.keys(defaultMeta[selectedNode.type]).includes(k) && k !== '상태' && k !== '첨부파일').length > 0 && (
+                      {Object.keys(selectedNodeObj.meta).filter(k => !Object.keys(defaultMeta[selectedNodeObj.type]).includes(k) && k !== '상태' && k !== '첨부파일').length > 0 && (
                         <div className="space-y-4 pt-4 border-t border-slate-200">
                           <h4 className="text-sm font-extrabold text-indigo-800 border-b border-indigo-100 pb-2 flex items-center">
                             <FileText size={16} className="mr-1.5" /> 커스텀 메모장
                           </h4>
-                          {Object.keys(selectedNode.meta)
-                            .filter(k => !Object.keys(defaultMeta[selectedNode.type]).includes(k) && k !== '상태' && k !== '첨부파일')
+                          {Object.keys(selectedNodeObj.meta)
+                            .filter(k => !Object.keys(defaultMeta[selectedNodeObj.type]).includes(k) && k !== '상태' && k !== '첨부파일')
                             .map(key => (
                             <div key={key} className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 relative group">
                               <input 
                                 type="text" 
                                 className="text-xs font-bold text-indigo-700 bg-transparent border-b border-indigo-200 outline-none mb-2 w-3/4 pb-0.5 focus:border-indigo-500" 
                                 value={key} 
-                                onChange={(e) => renameNodeMetaKey(selectedNode.id, key, e.target.value)}
+                                onChange={(e) => renameNodeMetaKey(selectedNodeObj.id, key, e.target.value)}
                                 placeholder="메모 제목"
                               />
-                              <button onClick={() => deleteNodeMetaKey(selectedNode.id, key)} className="absolute top-3 right-3 text-indigo-300 hover:text-red-500 bg-white rounded-full p-1 shadow-sm transition">
+                              <button onClick={() => deleteNodeMetaKey(selectedNodeObj.id, key)} className="absolute top-3 right-3 text-indigo-300 hover:text-red-500 bg-white rounded-full p-1 shadow-sm transition">
                                 <Trash2 size={12} />
                               </button>
                               <textarea 
                                 className="w-full text-sm text-slate-700 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-300 p-2.5 min-h-[80px] resize-y"
-                                value={selectedNode.meta[key]} 
-                                onChange={(e) => updateNodeMeta(selectedNode.id, key, e.target.value)} 
+                                value={selectedNodeObj.meta[key]} 
+                                onChange={(e) => updateNodeMeta(selectedNodeObj.id, key, e.target.value)} 
                                 placeholder="자유롭게 내용을 작성하세요."
                               />
                             </div>
@@ -1559,23 +1595,23 @@
                         <h4 className="text-sm font-extrabold text-slate-800 mb-3 flex items-center">
                           <Paperclip size={16} className="mr-1.5 text-slate-500" /> 파일 첨부 및 다운로드
                         </h4>
-                        {selectedNode.meta?.첨부파일 ? (
+                        {selectedNodeObj.meta?.첨부파일 ? (
                           <div className="flex items-center justify-between bg-white border border-slate-300 shadow-sm p-3 rounded-xl text-sm font-bold text-slate-700">
                             <span className="truncate flex-1 mr-3 text-blue-600">
-                              {selectedNode.meta.첨부파일.name || selectedNode.meta.첨부파일}
+                              {selectedNodeObj.meta.첨부파일.name || selectedNodeObj.meta.첨부파일}
                             </span>
                             <div className="flex items-center space-x-1 shrink-0">
-                              {selectedNode.meta.첨부파일.url && (
+                              {selectedNodeObj.meta.첨부파일.url && (
                                 <a 
-                                  href={selectedNode.meta.첨부파일.url} 
-                                  download={selectedNode.meta.첨부파일.name}
+                                  href={selectedNodeObj.meta.첨부파일.url} 
+                                  download={selectedNodeObj.meta.첨부파일.name}
                                   className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition"
                                   title="파일 다운로드"
                                 >
                                   <Download size={16}/>
                                 </a>
                               )}
-                              <button onClick={() => deleteNodeMetaKey(selectedNode.id, '첨부파일')} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition">
+                              <button onClick={() => deleteNodeMetaKey(selectedNodeObj.id, '첨부파일')} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition">
                                 <X size={16}/>
                               </button>
                             </div>
@@ -1583,7 +1619,7 @@
                         ) : (
                           <label className="flex flex-col items-center justify-center w-full bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-6 text-sm text-slate-500 cursor-pointer hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 transition font-bold">
                             <Paperclip size={24} className="mb-2 text-slate-400" />
-                            <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, selectedNode.id)} />
+                            <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, selectedNodeObj.id)} />
                             PC에서 문서/파일 업로드
                           </label>
                         )}
@@ -1593,13 +1629,13 @@
                         <h4 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center">
                           <Network size={16} className="text-blue-500 mr-1.5" /> 연결된 객체 현황
                         </h4>
-                        {getConnectedObjects(selectedNode.id).length === 0 ? (
+                        {getConnectedObjects(selectedNodeObj.id).length === 0 ? (
                           <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
                             <p className="text-xs text-slate-400 font-bold">현재 연결된 노드가 없습니다.</p>
                           </div>
                         ) : (
                           <div className="space-y-3">
-                            {getConnectedObjects(selectedNode.id).map((item, idx) => (
+                            {getConnectedObjects(selectedNodeObj.id).map((item, idx) => (
                               <div key={idx} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 transition group">
                                 <div className="flex items-center justify-between mb-2">
                                   <span className="text-[10px] font-extrabold px-2.5 py-1 rounded text-white shadow-sm" style={{ backgroundColor: typeColors[item.node.type] }}>
@@ -1623,13 +1659,13 @@
                       </div>
                     </div>
                   </div>
-                ) : selectionType === 'edge' && selectedEdge ? (
+                ) : selectionType === 'edge' && selectedEdgeObj ? (
                   <div className="flex-1 flex flex-col bg-white">
                     <div className="p-6 border-b border-slate-200 bg-slate-50 shrink-0">
                       <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider mb-3 block">관계선(Link) 도출 방식 지정</span>
                       
                       <select
-                        value={selectedEdge.method || 'manual'} onChange={(e) => updateEdge(selectedEdge.id, 'method', e.target.value)}
+                        value={selectedEdgeObj.method || 'manual'} onChange={(e) => updateEdge(selectedEdgeObj.id, 'method', e.target.value)}
                         className="w-full text-base font-extrabold text-slate-800 bg-white border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none px-4 py-3 cursor-pointer shadow-sm transition"
                       >
                         <option value="manual">✋ 수동 입력 (No Rule)</option>
@@ -1646,7 +1682,7 @@
                       </select>
 
                       <button 
-                        onClick={() => reverseEdgeDirection(selectedEdge.id)} 
+                        onClick={() => reverseEdgeDirection(selectedEdgeObj.id)} 
                         className="mt-4 w-full bg-white border border-slate-300 hover:bg-slate-100 hover:border-slate-400 text-slate-700 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center transition shadow-sm"
                       >
                         <ArrowLeftRight size={16} className="mr-2 text-slate-500" /> 화살표 방향 반전 (Swap)
@@ -1654,23 +1690,22 @@
                     </div>
 
                     <div className="p-6 flex-1 overflow-y-auto bg-white">
-                      {selectedEdge.method === 'manual' && (
+                      {selectedEdgeObj.method === 'manual' && (
                         <div className="mb-6">
                           <label className="text-sm font-extrabold text-slate-800 mb-2 block">수동 관계 명칭 타이핑</label>
                           <input 
-                            type="text" value={selectedEdge.label || ''} onChange={(e) => updateEdge(selectedEdge.id, 'label', e.target.value)}
+                            type="text" value={selectedEdgeObj.label || ''} onChange={(e) => updateEdge(selectedEdgeObj.id, 'label', e.target.value)}
                             placeholder="관계 직접 입력 (예: 확인용, 참조함)"
                             className="w-full text-sm font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none p-3 shadow-sm transition"
                           />
                         </div>
                       )}
 
-                      {/* 선 진행상황 추가 */}
                       <div className="mb-6">
                         <label className="text-sm font-extrabold text-slate-800 mb-2 block">연결 진행상황 및 메모</label>
                         <textarea
-                          value={selectedEdge.progress || ''}
-                          onChange={(e) => updateEdge(selectedEdge.id, 'progress', e.target.value)}
+                          value={selectedEdgeObj.progress || ''}
+                          onChange={(e) => updateEdge(selectedEdgeObj.id, 'progress', e.target.value)}
                           placeholder="이 연결 작업에 대한 현재 진행상황이나 향후 계획을 메모하세요."
                           className="w-full text-sm font-medium text-slate-800 bg-white border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none p-3 min-h-[80px] shadow-sm transition resize-y"
                         />
@@ -1678,24 +1713,24 @@
 
                       <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
                         <div className="flex items-center mb-2">
-                          {methodIcons[selectedEdge.method]}
-                          <span className="text-sm font-extrabold text-slate-800">{methodNames[selectedEdge.method]} 설명</span>
+                          {methodIcons[selectedEdgeObj.method]}
+                          <span className="text-sm font-extrabold text-slate-800">{methodNames[selectedEdgeObj.method]} 설명</span>
                         </div>
                         <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                          {methodDescriptions[selectedEdge.method]}
+                          {methodDescriptions[selectedEdgeObj.method]}
                         </p>
                       </div>
 
-                      {selectedEdge.method !== 'manual' && (
+                      {selectedEdgeObj.method !== 'manual' && (
                         <div className="mt-8">
                           <label className="text-sm font-extrabold text-slate-800 mb-3 flex items-center">
                             <Settings size={16} className="mr-1.5 text-blue-500" /> 
                             상세 규칙 및 세팅 로직 정의
                           </label>
                           <textarea
-                            value={selectedEdge.logic || ''}
-                            onChange={(e) => updateEdge(selectedEdge.id, 'logic', e.target.value)}
-                            placeholder={logicPlaceholders[selectedEdge.method]}
+                            value={selectedEdgeObj.logic || ''}
+                            onChange={(e) => updateEdge(selectedEdgeObj.id, 'logic', e.target.value)}
+                            placeholder={logicPlaceholders[selectedEdgeObj.method]}
                             className="w-full text-sm font-medium text-slate-800 border border-slate-300 rounded-xl p-4 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 outline-none min-h-[140px] resize-y shadow-sm bg-white transition leading-relaxed"
                           />
                           <p className="text-[10px] text-slate-500 mt-2 font-medium leading-relaxed bg-blue-50 p-2 rounded-lg">
