@@ -101,18 +101,18 @@
     const ZoomOut = (p) => <IconWrapper name="zoom-out" {...p} />;
     const Move = (p) => <IconWrapper name="move" {...p} />;
     const Layers = (p) => <IconWrapper name="layers" {...p} />;
-    const AlignCenter = (p) => <IconWrapper name="align-center" {...p} />; // 정렬 아이콘
-    const CalendarIcon = (p) => <IconWrapper name="calendar" {...p} />; // 달력 아이콘
+    const AlignCenter = (p) => <IconWrapper name="align-center" {...p} />; 
+    const CalendarIcon = (p) => <IconWrapper name="calendar" {...p} />; 
 
     // --- [기본 세팅 값] ---
     const defaultMeta = {
-      Task: { 상태: '미진행', 목적: '', 담당자: '', 시작일: '', 종료일: '' },
-      Data: { 상태: '미진행', 담당자: '', 데이터셋명: '', 데이터형태: '', 갱신주기: '' }, 
-      System: { 상태: '미진행', 담당자: '', 시스템명: '', URL: '', 운영부서: '', 데이터셋명: '', 데이터형태: '' }, 
-      Law: { 상태: '미진행', 담당자: '', 국가법령명: '', 시행일: '', 소관부처: '', 조항: '', 원문링크: '' },
-      Regulation: { 상태: '미진행', 담당자: '', 사내규정명: '', 시행일: '', 주관부서: '', 조항: '', 원문링크: '' },
-      Guideline: { 상태: '미진행', 담당자: '', 매뉴얼명: '', 버전: '', 작성자: '', 원문파일: '' },
-      Deliverable: { 상태: '미진행', 담당자: '', 산출물명: '', 확장자: '', 생성일: '', 승인자: '' }
+      Task: { 상태: '미진행', 목적: '', 담당자: '', 시작일: '', 종료일: '', 진행상황: '' },
+      Data: { 상태: '미진행', 담당자: '', 데이터셋명: '', 데이터형태: '', 갱신주기: '', 진행상황: '' }, 
+      System: { 상태: '미진행', 담당자: '', 시스템명: '', URL: '', 운영부서: '', 데이터셋명: '', 데이터형태: '', 진행상황: '' }, 
+      Law: { 상태: '미진행', 담당자: '', 국가법령명: '', 시행일: '', 소관부처: '', 조항: '', 원문링크: '', 진행상황: '' },
+      Regulation: { 상태: '미진행', 담당자: '', 사내규정명: '', 시행일: '', 주관부서: '', 조항: '', 원문링크: '', 진행상황: '' },
+      Guideline: { 상태: '미진행', 담당자: '', 매뉴얼명: '', 버전: '', 작성자: '', 원문파일: '', 진행상황: '' },
+      Deliverable: { 상태: '미진행', 담당자: '', 산출물명: '', 확장자: '', 생성일: '', 승인자: '', 진행상황: '' }
     };
 
     const typeColors = {
@@ -122,7 +122,7 @@
       Law: '#1e3a8a',        
       Regulation: '#0284c7', 
       Guideline: '#38bdf8',  
-      Deliverable: '#93c5fd' 
+      Deliverable: '#8b5cf6' // Deliverable 전용 컬러 (보라/남색 계열)
     };
 
     const typeLabels = {
@@ -182,14 +182,15 @@
       '문서 (PDF/Word)': '텍스트 위주의 비정형 산출물 문서'
     };
 
-    // ★ 스윔레인(계층) 정의 ★
-    const LANE_H = 160; 
+    // ★ 스윔레인 6개(산출물 분리 및 과제 최하단 배치) ★
+    const LANE_H = 135; // 6개 층을 맞추기 위해 높이 소폭 조정
     const SWIMLANES = [
       { id: 'l_law', title: '🏛️ 국가법령', types: ['Law'], y: 0, h: LANE_H, bg: 'transparent', color: '#1e40af' },
       { id: 'l_reg', title: '🏢 사내규정', types: ['Regulation'], y: LANE_H, h: LANE_H, bg: 'rgba(241, 245, 249, 0.6)', color: '#0369a1' },
       { id: 'l_gui', title: '📖 운영 지침 및 가이드', types: ['Guideline'], y: LANE_H * 2, h: LANE_H, bg: 'transparent', color: '#0284c7' },
       { id: 'l_sys', title: '🖥️ 시스템/데이터', types: ['Data', 'System'], y: LANE_H * 3, h: LANE_H, bg: 'rgba(241, 245, 249, 0.6)', color: '#4f46e5' },
-      { id: 'l_tsk', title: '🎯 과제', types: ['Task', 'Deliverable'], y: LANE_H * 4, h: LANE_H, bg: 'transparent', color: '#2563eb' },
+      { id: 'l_del', title: '📦 기타 산출물', types: ['Deliverable'], y: LANE_H * 4, h: LANE_H, bg: 'transparent', color: '#8b5cf6' },
+      { id: 'l_tsk', title: '🎯 과제', types: ['Task'], y: LANE_H * 5, h: LANE_H, bg: 'rgba(241, 245, 249, 0.6)', color: '#2563eb' },
     ];
 
     const defaultMockUsers = [
@@ -824,43 +825,61 @@
       }, [handleSaveMap, undo, redo]);
 
 
-      // ★ 신규 추가: 노드 자동 정렬 기능 ★
+      // ★ 스마트 자동 정렬 (Barycentric Clustering) ★
       const handleAutoAlign = () => {
         saveState();
         
-        const groupedNodes = {};
-        SWIMLANES.forEach(lane => groupedNodes[lane.id] = []);
-
-        // 현재 맵에 존재하는 노드들을 스윔레인 별로 분류
-        nodes.forEach(node => {
-          const lane = SWIMLANES.find(l => l.types.includes(node.type));
-          if (lane) groupedNodes[lane.id].push(node);
-        });
-
         let newNodes = [...nodes];
+        const gapX = 180;   
         
-        // 각 스윔레인 별로 X좌표를 균등하게 재배치
-        SWIMLANES.forEach(lane => {
-          const laneNodes = groupedNodes[lane.id];
-          
-          // 기존 X 좌표 순서대로 정렬 (흐름이 꼬이지 않게 유지)
-          laneNodes.sort((a, b) => a.x - b.x);
+        // 연결 관계를 분석하여 이상적인 위치(targetX)를 여러 번 반복 계산
+        for (let pass = 0; pass < 3; pass++) {
+          SWIMLANES.forEach(lane => {
+            const laneNodes = newNodes.filter(n => lane.types.includes(n.type));
+            if (laneNodes.length === 0) return;
 
-          const startX = 150; // 좌측 여백
-          const gapX = 180;   // 노드 간 가로 간격
-          const centerY = lane.y + (lane.h / 2); // 층의 완벽한 중앙 Y좌표
+            // 각 노드에 연결된 이웃들의 x좌표 평균값을 계산
+            laneNodes.forEach(node => {
+              const connected = edges.filter(e => e.source === node.id || e.target === node.id);
+              if (connected.length > 0) {
+                let sumX = 0;
+                connected.forEach(e => {
+                  const neighborId = e.source === node.id ? e.target : e.source;
+                  const neighbor = newNodes.find(n => n.id === neighborId);
+                  if (neighbor) sumX += neighbor.x;
+                });
+                node.targetX = sumX / connected.length;
+                node.weight = connected.length; // 연결이 많을수록 우선순위 부여
+              } else {
+                node.targetX = node.x;
+                node.weight = 0;
+              }
+            });
 
-          laneNodes.forEach((node, idx) => {
-            const targetNode = newNodes.find(n => n.id === node.id);
-            if (targetNode) {
-              targetNode.x = startX + (idx * gapX);
-              targetNode.y = centerY;
-            }
+            // 이상적인 X좌표(targetX) 순서로 정렬하되, 같으면 가중치(weight) 우선
+            laneNodes.sort((a, b) => {
+              if (Math.abs(a.targetX - b.targetX) > 1) return a.targetX - b.targetX;
+              return b.weight - a.weight;
+            });
+
+            // 정렬된 순서를 바탕으로 다시 균등하게 배치
+            const centerY = lane.y + (lane.h / 2);
+            const totalWidth = (laneNodes.length - 1) * gapX;
+            
+            // 화면 중앙에 예쁘게 오도록 시작 X점 계산
+            const mapContainer = mapContainerRef.current;
+            const centerScreenX = mapContainer ? mapContainer.clientWidth / 2 : 800;
+            const laneStartX = Math.max(100, centerScreenX - (totalWidth / 2));
+
+            laneNodes.forEach((node, idx) => {
+              node.x = laneStartX + (idx * gapX);
+              node.y = centerY;
+            });
           });
-        });
+        }
         
         setNodes(newNodes);
-        showToast('노드가 깔끔하게 정렬되었습니다.', 'success');
+        showToast('연결 관계를 분석하여 맵이 최적의 형태로 정렬되었습니다.', 'success');
       };
 
 
@@ -883,7 +902,7 @@
           } else {
             if (connectSource !== id) {
               saveState();
-              const newEdge = { id: `e_${Date.now()}`, source: connectSource, target: id, label: '', method: 'manual', logic: '' };
+              const newEdge = { id: `e_${Date.now()}`, source: connectSource, target: id, label: '', method: 'manual', logic: '', progress: '' };
               setEdges([...edges, newEdge]);
               showToast('성공적으로 연결되었습니다. 우측에서 규칙을 설정하세요.', 'success');
             }
@@ -1164,6 +1183,16 @@
           );
         }
 
+        if (key === '진행상황') {
+          return (
+            <textarea 
+              className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-medium transition resize-y min-h-[80px]" 
+              value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
+              placeholder="현재 어디까지 진행되었고 무엇을 해야하는지 상세히 작성해주세요." 
+            />
+          );
+        }
+
         let placeholder = "값을 입력하세요";
         if (key === '목적') placeholder = "과제의 목적을 입력하세요.";
         if (key === '데이터셋명') placeholder = "데이터명을 입력하세요.";
@@ -1215,7 +1244,7 @@
               
               {/* ★ 자동 정렬 버튼 추가 ★ */}
               <div className="flex items-center space-x-2 border-r border-slate-200 pr-4">
-                 <button onClick={handleAutoAlign} className="flex items-center px-3 py-2 hover:bg-slate-100 text-slate-700 rounded-lg text-sm font-bold transition shadow-sm border border-slate-200" title="노드들을 깔끔하게 줄맞춤합니다.">
+                 <button onClick={handleAutoAlign} className="flex items-center px-3 py-2 hover:bg-slate-100 text-slate-700 rounded-lg text-sm font-bold transition shadow-sm border border-slate-200" title="연결망 분석 기반 자동 정렬">
                    <AlignCenter size={16} className="mr-1.5" /> 자동 정렬
                  </button>
               </div>
@@ -1264,6 +1293,7 @@
 
           <div className="flex flex-1 relative min-h-0 bg-slate-50 overflow-hidden no-select">
             
+            {/* SVG Canvas - 줌 및 팬 적용을 위한 내부 그룹(g) 추가 */}
             <div 
               id="map-container"
               ref={mapContainerRef}
@@ -1634,6 +1664,17 @@
                           />
                         </div>
                       )}
+
+                      {/* 선 진행상황 추가 */}
+                      <div className="mb-6">
+                        <label className="text-sm font-extrabold text-slate-800 mb-2 block">연결 진행상황 및 메모</label>
+                        <textarea
+                          value={selectedEdge.progress || ''}
+                          onChange={(e) => updateEdge(selectedEdge.id, 'progress', e.target.value)}
+                          placeholder="이 연결 작업에 대한 현재 진행상황이나 향후 계획을 메모하세요."
+                          className="w-full text-sm font-medium text-slate-800 bg-white border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none p-3 min-h-[80px] shadow-sm transition resize-y"
+                        />
+                      </div>
 
                       <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
                         <div className="flex items-center mb-2">
