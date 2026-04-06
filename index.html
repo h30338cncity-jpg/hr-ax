@@ -103,16 +103,17 @@
     const Layers = (p) => <IconWrapper name="layers" {...p} />;
     const AlignCenter = (p) => <IconWrapper name="align-center" {...p} />; 
     const CalendarIcon = (p) => <IconWrapper name="calendar" {...p} />; 
+    const ListIcon = (p) => <IconWrapper name="list" {...p} />; 
 
     // --- [기본 세팅 값] ---
     const defaultMeta = {
-      Task: { 상태: '미진행', 목적: '', 담당자: '', 시작일: '', 종료일: '', 진행상황: '' },
-      Data: { 상태: '미진행', 담당자: '', 데이터셋명: '', 데이터형태: '', 갱신주기: '', 진행상황: '' }, 
-      System: { 상태: '미진행', 담당자: '', 시스템명: '', URL: '', 운영부서: '', 데이터셋명: '', 데이터형태: '', 진행상황: '' }, 
-      Law: { 상태: '미진행', 담당자: '', 국가법령명: '', 시행일: '', 소관부처: '', 조항: '', 원문링크: '', 진행상황: '' },
-      Regulation: { 상태: '미진행', 담당자: '', 사내규정명: '', 시행일: '', 주관부서: '', 조항: '', 원문링크: '', 진행상황: '' },
-      Guideline: { 상태: '미진행', 담당자: '', 매뉴얼명: '', 버전: '', 작성자: '', 원문파일: '', 진행상황: '' },
-      Deliverable: { 상태: '미진행', 담당자: '', 산출물명: '', 확장자: '', 생성일: '', 승인자: '', 진행상황: '' }
+      Task: { 상태: '미진행', 설명: '', 목적: '', 담당자: '', 시작일: '', 종료일: '', 진행상황: '' },
+      Data: { 상태: '미진행', 설명: '', 담당자: '', 데이터셋명: '', 데이터형태: '', 갱신주기: '', 진행상황: '' }, 
+      System: { 상태: '미진행', 설명: '', 담당자: '', 시스템명: '', URL: '', 운영부서: '', 데이터셋명: '', 데이터형태: '', 진행상황: '' }, 
+      Law: { 상태: '미진행', 설명: '', 담당자: '', 국가법령명: '', 시행일: '', 소관부처: '', 조항: '', 원문링크: '', 진행상황: '' },
+      Regulation: { 상태: '미진행', 설명: '', 담당자: '', 사내규정명: '', 시행일: '', 주관부서: '', 조항: '', 원문링크: '', 진행상황: '' },
+      Guideline: { 상태: '미진행', 설명: '', 담당자: '', 매뉴얼명: '', 버전: '', 작성자: '', 원문파일: '', 진행상황: '' },
+      Deliverable: { 상태: '미진행', 설명: '', 담당자: '', 산출물명: '', 산출물형태: '', 생성일: '', 승인자: '', 진행상황: '' }
     };
 
     const typeColors = {
@@ -182,6 +183,16 @@
       '문서 (PDF/Word)': '텍스트 위주의 비정형 산출물 문서'
     };
 
+    const deliverableTypeGuides = {
+      '문서 (Word/HWP/PDF)': '보고서, 기획서 등 텍스트 위주의 문서',
+      '스프레드시트 (Excel)': '데이터, 통계, 일정 등 표 형태의 문서',
+      '프레젠테이션 (PPT)': '발표, 요약 보고용 슬라이드',
+      '이미지/디자인 (PNG/JPG/PSD)': '화면 설계, 아키텍처 다이어그램, 디자인 시안',
+      '소스코드/스크립트': '개발된 프로그램 소스코드 파일',
+      '압축파일 (ZIP)': '여러 파일이 포함된 패키지',
+      '기타': '그 외 형태의 산출물'
+    };
+
     const LANE_H = 135; 
     const SWIMLANES = [
       { id: 'l_law', title: '🏛️ 국가법령', types: ['Law'], y: 0, h: LANE_H, bg: 'transparent', color: '#1e40af' },
@@ -209,48 +220,6 @@
         <div className={`fixed bottom-4 right-4 text-white px-4 py-3 rounded shadow-lg flex items-center space-x-2 animate-bounce ${bgColor} z-50`}>
           {type === 'error' ? <ShieldAlert size={20} /> : <CheckCircle size={20} />}
           <span>{message}</span>
-        </div>
-      );
-    };
-
-    const DataFormatInput = ({ val, nodeId, updateNodeMeta }) => {
-      const isCustom = val && !Object.keys(dataTypeGuides).includes(val);
-      const [mode, setMode] = useState(isCustom ? 'custom' : 'select');
-
-      const handleSelect = (e) => {
-        if (e.target.value === 'custom') {
-          setMode('custom');
-          updateNodeMeta(nodeId, '데이터형태', '');
-        } else {
-          setMode('select');
-          updateNodeMeta(nodeId, '데이터형태', e.target.value);
-        }
-      };
-
-      return (
-        <div className="space-y-1.5">
-          <select 
-            className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-bold text-slate-700 cursor-pointer transition" 
-            value={mode === 'custom' ? 'custom' : (val || '')} 
-            onChange={handleSelect}
-          >
-            <option value="">형태 선택...</option>
-            {Object.keys(dataTypeGuides).map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            <option value="custom">직접 입력 (목록에 없음)</option>
-          </select>
-          
-          {mode === 'custom' && (
-             <input 
-               type="text" 
-               className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-medium mt-1" 
-               value={val || ''} onChange={(e) => updateNodeMeta(nodeId, '데이터형태', e.target.value)} 
-               placeholder="원하는 데이터 형태를 직접 입력하세요" 
-             />
-          )}
-          
-          {mode === 'select' && val && dataTypeGuides[val] && (
-            <p className="text-[10px] text-slate-500 font-medium bg-slate-100 p-1.5 rounded">💡 {dataTypeGuides[val]}</p>
-          )}
         </div>
       );
     };
@@ -349,6 +318,7 @@
             <nav className="flex-1 py-6 space-y-1 px-3">
               <NavItem icon={<LayoutDashboard />} label="대시보드" active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} />
               <NavItem icon={<Network />} label="온톨로지 맵 뷰어" active={currentView === 'map'} onClick={() => setCurrentView('map')} />
+              <NavItem icon={<ListIcon />} label="전체 관계망 목록" active={currentView === 'links'} onClick={() => setCurrentView('links')} />
               {currentUser?.role === 'System Admin' && (
                 <NavItem icon={<Users />} label="계정/권한 관리" active={currentView === 'admin'} onClick={() => setCurrentView('admin')} />
               )}
@@ -381,6 +351,7 @@
               <h1 className="text-lg font-extrabold text-slate-800">
                 {currentView === 'dashboard' && '과제 및 품질 대시보드'}
                 {currentView === 'map' && '온톨로지 맵 탐색기'}
+                {currentView === 'links' && '전체 관계망 연결 목록'}
                 {currentView === 'admin' && '시스템 관리자 전용 대시보드'}
               </h1>
             </header>
@@ -587,6 +558,7 @@
         <div className="flex-1 overflow-hidden relative bg-slate-50/50 flex flex-col">
           {currentView === 'dashboard' && <div className="p-4 md:p-6 overflow-auto h-full"><DashboardView onNavMap={() => setCurrentView('map')} nodes={nodes} edges={edges} currentUser={currentUser} /></div>}
           {currentView === 'map' && <MapView nodes={nodes} setNodes={setNodes} edges={edges} setEdges={setEdges} handleSaveMap={handleSaveMap} showToast={showToast} users={usersDb} />}
+          {currentView === 'links' && <div className="p-4 md:p-6 overflow-auto h-full"><LinkListView nodes={nodes} edges={edges} setEdges={setEdges} onNavMap={() => setCurrentView('map')} showToast={showToast} /></div>}
           {currentView === 'admin' && <div className="p-4 md:p-6 overflow-auto h-full"><AdminView users={usersDb} onAddUser={onAddUser} onUpdateUser={onUpdateUser} onDeleteUser={onDeleteUser} /></div>}
         </div>
       );
@@ -656,9 +628,9 @@
                   {myTasks.map(t => {
                     const status = t.meta?.상태 || '미진행';
                     let badgeColor = 'bg-slate-100 text-slate-600';
-                    if (status === '진행중') badgeColor = 'bg-blue-100 text-blue-700';
-                    if (status === '완료') badgeColor = 'bg-emerald-100 text-emerald-700';
-                    if (status === '보류') badgeColor = 'bg-amber-100 text-amber-700';
+                    if (status === '진행중') badgeColor = 'bg-orange-100 text-orange-700';
+                    if (status === '완료') badgeColor = 'bg-blue-100 text-blue-700';
+                    if (status === '보류') badgeColor = 'bg-red-100 text-red-700';
 
                     return (
                       <tr key={t.id} className="hover:bg-slate-50 transition cursor-pointer" onClick={onNavMap}>
@@ -717,6 +689,89 @@
                 <span className="text-sm font-medium text-red-400 ml-1">건 조치 필요</span>
               </div>
             </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ★ [신규 화면] 전체 관계망 목록 뷰 ★
+    const LinkListView = ({ nodes, edges, setEdges, onNavMap, showToast }) => {
+      const handleDeleteEdge = (edgeId) => {
+        if(window.confirm('이 연결을 삭제하시겠습니까?')) {
+          setEdges(edges.filter(e => e.id !== edgeId));
+          showToast('연결이 삭제되었습니다.');
+        }
+      };
+
+      return (
+        <div className="max-w-7xl mx-auto space-y-6 pb-10">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-slate-800 flex items-center">
+              <ListIcon size={24} className="mr-2 text-indigo-600" /> 전체 관계망 연결 목록
+            </h2>
+            <div className="text-sm font-bold text-slate-500 bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200">
+              총 {edges.length}개의 연결이 존재합니다.
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            {edges.length === 0 ? (
+              <div className="p-12 text-center text-slate-400 font-bold text-base bg-slate-50">현재 생성된 연결선이 없습니다.</div>
+            ) : (
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-600 border-b">
+                  <tr>
+                    <th className="px-6 py-4 font-bold w-1/4">시작 객체 (Node A)</th>
+                    <th className="px-2 py-4 font-bold text-center w-16">방향</th>
+                    <th className="px-6 py-4 font-bold w-1/4">대상 객체 (Node B)</th>
+                    <th className="px-6 py-4 font-bold">관계 유형 및 진행상황</th>
+                    <th className="px-6 py-4 font-bold text-right w-24">관리</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {edges.map(e => {
+                    const s = nodes.find(n => n.id === e.source);
+                    const t = nodes.find(n => n.id === e.target);
+                    if(!s || !t) return null;
+
+                    return (
+                      <tr key={e.id} className="hover:bg-slate-50 transition">
+                        <td className="px-6 py-4">
+                           <div className="flex items-center">
+                             <span className="w-2.5 h-2.5 rounded-full mr-2 shrink-0" style={{backgroundColor: s.color}}></span>
+                             <div className="truncate font-extrabold text-slate-800" title={s.label}>{s.label}</div>
+                           </div>
+                           <div className="text-[10px] text-slate-400 font-bold mt-1 ml-4">{typeLabels[s.type]}</div>
+                        </td>
+                        <td className="px-2 py-4 text-center text-slate-400 font-bold">
+                           {e.direction === 'both' ? '⟷' : e.direction === 'none' ? '―' : '➔'}
+                        </td>
+                        <td className="px-6 py-4">
+                           <div className="flex items-center">
+                             <span className="w-2.5 h-2.5 rounded-full mr-2 shrink-0" style={{backgroundColor: t.color}}></span>
+                             <div className="truncate font-extrabold text-slate-800" title={t.label}>{t.label}</div>
+                           </div>
+                           <div className="text-[10px] text-slate-400 font-bold mt-1 ml-4">{typeLabels[t.type]}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                           <div className="flex items-center text-xs font-bold text-indigo-700 mb-1">
+                             {e.method === 'manual' ? <Edit3 size={12} className="mr-1"/> : <Zap size={12} className="mr-1"/>}
+                             {methodNames[e.method]}
+                           </div>
+                           <div className="text-xs text-slate-600 font-medium truncate" title={e.progress || e.label || '내용 없음'}>
+                             {e.progress || e.label || <span className="text-slate-300 italic">메모 없음</span>}
+                           </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button onClick={onNavMap} className="text-blue-600 hover:text-blue-800 font-bold text-xs mr-3 transition" title="맵에서 위치 보기">맵 이동</button>
+                          <button onClick={() => handleDeleteEdge(e.id)} className="text-red-500 hover:text-red-700 font-bold text-xs transition" title="연결 삭제">삭제</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       );
@@ -853,11 +908,9 @@
             });
 
             laneNodes.sort((a, b) => {
-              // 과제(Task) 레인인 경우 가나다순(label 기준)으로 정렬
               if (lane.id === 'l_tsk') {
                 return (a.label || '').localeCompare(b.label || '', 'ko-KR');
               }
-              // 그 외 레인은 기존 연결 관계(Barycentric) 기준 정렬
               if (Math.abs(a.targetX - b.targetX) > 1) return a.targetX - b.targetX;
               return b.weight - a.weight;
             });
@@ -900,7 +953,8 @@
           } else {
             if (connectSource !== id) {
               saveState();
-              const newEdge = { id: `e_${Date.now()}`, source: connectSource, target: id, label: '', method: 'manual', logic: '', progress: '' };
+              // ★ 양방향성을 지원하기 위해 초기 direction 속성 추가 ★
+              const newEdge = { id: `e_${Date.now()}`, source: connectSource, target: id, label: '', method: 'manual', logic: '', progress: '', direction: 'forward' };
               setEdges([...edges, newEdge]);
               showToast('성공적으로 연결되었습니다. 우측에서 규칙을 설정하세요.', 'success');
             }
@@ -1085,12 +1139,6 @@
         setEdges(edges.map(e => e.id === id ? { ...e, [key]: value } : e));
       };
 
-      const reverseEdgeDirection = (edgeId) => {
-        saveState();
-        setEdges(edges.map(e => e.id === edgeId ? { ...e, source: e.target, target: e.source } : e));
-        showToast('화살표 방향이 변경되었습니다.', 'success');
-      };
-
       const addMemo = (nodeId) => {
         saveState();
         updateNodeMeta(nodeId, `메모_${Math.floor(Math.random() * 1000)}`, '');
@@ -1135,6 +1183,7 @@
       const renderMetaInput = (key, val, nodeId) => {
         const isUrl = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('www') || val.startsWith('link.'));
 
+        // 날짜 필드
         if (['시작일', '종료일', '시행일', '생성일'].includes(key)) {
           return (
             <input 
@@ -1145,6 +1194,7 @@
           );
         }
         
+        // 담당자, 승인자: 수동입력 + 드롭다운 편의성 결합
         if (['담당자', '승인자'].includes(key)) {
           const currentUsers = val ? val.split(',').map(s=>s.trim()).filter(Boolean) : [];
           const toggleUser = (userName) => {
@@ -1154,43 +1204,93 @@
           
           return (
             <div className="space-y-2">
-              <select 
-                className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer font-bold text-slate-600 transition" 
-                onChange={(e) => { if(e.target.value) toggleUser(e.target.value); e.target.value=''; }}
-                defaultValue=""
-              >
-                <option value="">+ 계정 선택 (복수 가능)</option>
-                {(users || []).map(u => <option key={u.id} value={u.name}>{u.name} ({u.dept})</option>)}
-              </select>
-              {currentUsers.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {currentUsers.map(u => (
-                    <span key={u} className="inline-flex items-center px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-bold shadow-sm">
-                      {u} <button onClick={() => toggleUser(u)} className="ml-1 hover:text-blue-900 bg-blue-200 rounded-full p-0.5"><X size={10}/></button>
-                    </span>
-                  ))}
-                </div>
-              )}
+              <div className="flex items-center space-x-2">
+                <input 
+                  type="text" 
+                  className="flex-1 text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-medium transition" 
+                  value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
+                  placeholder="직접 입력 (쉼표로 구분)" 
+                />
+                <select 
+                  className="w-10 text-sm border border-slate-300 bg-slate-50 px-2 py-2 rounded-lg outline-none focus:border-blue-500 cursor-pointer font-bold text-slate-600 transition" 
+                  onChange={(e) => { if(e.target.value) toggleUser(e.target.value); e.target.value=''; }}
+                  defaultValue=""
+                  title="계정 목록에서 추가"
+                >
+                  <option value="">+</option>
+                  {[...(users || [])].sort((a, b) => a.name.localeCompare(b.name, 'ko-KR')).map(u => <option key={u.id} value={u.name}>{u.name} ({u.dept})</option>)}
+                </select>
+              </div>
             </div>
           );
         }
 
-        if (key === '데이터형태') {
+        // 상태: 수동입력 가능한 콤보박스 (Datalist)
+        if (key === '상태') {
           return (
-            <DataFormatInput key={`df_${nodeId}`} val={val} nodeId={nodeId} updateNodeMeta={updateNodeMeta} />
+            <div className="relative">
+               <input 
+                 type="text" list={`dl-status-${nodeId}`}
+                 className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-bold text-slate-700 transition" 
+                 value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
+                 placeholder="상태를 선택하거나 입력하세요" 
+               />
+               <datalist id={`dl-status-${nodeId}`}>
+                 <option value="미진행" />
+                 <option value="진행중" />
+                 <option value="보류" />
+                 <option value="완료" />
+               </datalist>
+            </div>
           );
         }
 
-        if (key === '진행상황') {
+        // 데이터형태: 수동입력 가능한 콤보박스
+        if (key === '데이터형태') {
+          return (
+            <div className="relative">
+               <input 
+                 type="text" list={`dl-data-${nodeId}`}
+                 className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-medium transition" 
+                 value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
+                 placeholder="데이터 형태를 선택하거나 입력하세요" 
+               />
+               <datalist id={`dl-data-${nodeId}`}>
+                 {Object.keys(dataTypeGuides).map(opt => <option key={opt} value={opt} />)}
+               </datalist>
+            </div>
+          );
+        }
+
+        // 산출물형태: 수동입력 가능한 콤보박스
+        if (key === '산출물형태') {
+          return (
+            <div className="relative">
+               <input 
+                 type="text" list={`dl-del-${nodeId}`}
+                 className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 font-medium transition" 
+                 value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
+                 placeholder="산출물 형태를 선택하거나 입력하세요" 
+               />
+               <datalist id={`dl-del-${nodeId}`}>
+                 {Object.keys(deliverableTypeGuides).map(opt => <option key={opt} value={opt} />)}
+               </datalist>
+            </div>
+          );
+        }
+
+        // 긴 텍스트 필드
+        if (key === '진행상황' || key === '설명') {
           return (
             <textarea 
               className="w-full text-sm border border-slate-300 bg-white px-3 py-2 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-medium transition resize-y min-h-[80px]" 
               value={val || ''} onChange={(e) => updateNodeMeta(nodeId, key, e.target.value)} 
-              placeholder="현재 어디까지 진행되었고 무엇을 해야하는지 상세히 작성해주세요." 
+              placeholder={key === '설명' ? "이 객체가 무엇을 의미하는지 상세한 설명을 작성해주세요." : "현재 어디까지 진행되었고 무엇을 해야하는지 상세히 작성해주세요."} 
             />
           );
         }
 
+        // 기본 텍스트 필드
         let placeholder = "값을 입력하세요";
         if (key === '목적') placeholder = "과제의 목적을 입력하세요.";
         if (key === '데이터셋명') placeholder = "데이터명을 입력하세요.";
@@ -1220,6 +1320,10 @@
       const selectedNodeObj = selectionType === 'node' ? nodes.find(n => n.id === selectedId) : null;
       const selectedEdgeObj = selectionType === 'edge' ? edges.find(e => e.id === selectedId) : null;
 
+      // ★ 연결선 속성 편집용 헤더 노드 추출 ★
+      const edgeSourceNode = selectedEdgeObj ? nodes.find(n => n.id === selectedEdgeObj.source) : null;
+      const edgeTargetNode = selectedEdgeObj ? nodes.find(n => n.id === selectedEdgeObj.target) : null;
+
       return (
         <div className="flex h-full rounded-2xl bg-white shadow-lg border border-slate-200 overflow-hidden flex-col relative">
           
@@ -1240,7 +1344,6 @@
                 </button>
               </div>
               
-              {/* ★ 자동 정렬 버튼 추가 ★ */}
               <div className="flex items-center space-x-2 border-r border-slate-200 pr-4">
                  <button onClick={handleAutoAlign} className="flex items-center px-3 py-2 hover:bg-slate-100 text-slate-700 rounded-lg text-sm font-bold transition shadow-sm border border-slate-200" title="연결망 분석 기반 자동 정렬">
                    <AlignCenter size={16} className="mr-1.5" /> 자동 정렬
@@ -1258,7 +1361,6 @@
                   <Layers size={16} className="mr-1.5" /> 레이어 필터
                 </button>
                 
-                {/* 레이어 드롭다운 패널 */}
                 {showLayerPanel && (
                   <div className="absolute top-12 left-0 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl p-4 z-50">
                     <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-3">
@@ -1310,6 +1412,7 @@
                     <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.1" />
                   </filter>
 
+                  {/* 화살표 마커 (단방향 및 양방향 대응) */}
                   <marker id="arrow-green" viewBox="0 0 10 10" refX="24" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                     <path d="M 0 0 L 10 5 L 0 10 z" fill="#10b981" />
                   </marker>
@@ -1343,7 +1446,7 @@
                     </g>
                   ))}
 
-                  {/* Edges (연결선) - 베지에 곡선 적용 및 평상시 선 다이어트 */}
+                  {/* Edges (연결선) */}
                   {visibleEdges.map((edge) => {
                     const s = visibleNodes.find(n => n.id === edge.source);
                     const t = visibleNodes.find(n => n.id === edge.target);
@@ -1352,41 +1455,40 @@
                     const isSelected = selectedId === edge.id && selectionType === 'edge';
                     const isHoverRelated = hoveredNode ? isEdgeConnectedToHover(edge) : false;
                     const isThisEdgeHovered = hoveredEdge === edge.id;
-                    
-                    // 활성화(하이라이트) 조건: 노드 호버, 선 호버, 또는 선 선택 시
                     const isActive = isSelected || isThisEdgeHovered || isHoverRelated;
                     
                     const hasRule = edge.method !== 'manual' || (edge.logic && edge.logic.trim() !== '');
-                    const edgeColor = hasRule ? '#10b981' : '#ef4444'; // 초록 or 빨강
+                    const edgeColor = hasRule ? '#10b981' : '#ef4444'; 
                     const strokeColor = isSelected ? '#3b82f6' : edgeColor;
                     const marker = isSelected ? 'arrow-blue-selected' : (hasRule ? 'arrow-green' : 'arrow-red');
 
-                    const displayText = edge.method === 'manual' ? (edge.label || '관계 입력') : methodNames[edge.method];
-
-                    // ★ 베지에 곡선 경로(Path) 계산 로직 ★
                     let pathD, midX, midY;
                     const isSameLane = Math.abs(s.y - t.y) < 10;
 
                     if (isSameLane) {
-                        // 같은 층일 경우: 위로 둥글게 호(Arc)를 그림
                         const arcH = 60;
                         pathD = `M ${s.x} ${s.y} Q ${(s.x + t.x)/2} ${s.y - arcH}, ${t.x} ${t.y}`;
                         midX = (s.x + t.x) / 2;
                         midY = s.y - (arcH / 2);
                     } else {
-                        // 다른 층일 경우: 부드러운 S자 곡선(Cubic Bezier)
                         midX = (s.x + t.x) / 2;
                         midY = (s.y + t.y) / 2;
                         pathD = `M ${s.x} ${s.y} C ${s.x} ${midY}, ${t.x} ${midY}, ${t.x} ${t.y}`;
                     }
 
-                    // 선 다이어트 (기본 투명도 30%, 얇게)
                     let edgeOpacityClass = "opacity-30"; 
                     if (isActive) edgeOpacityClass = "opacity-100";
-                    else if (hoveredNode || hoveredEdge) edgeOpacityClass = "opacity-10"; // 다른 객체 호버 시 더 흐려짐
+                    else if (hoveredNode || hoveredEdge) edgeOpacityClass = "opacity-10";
 
                     let strokeW = isActive ? "3" : "1.5";
                     if (isSelected) strokeW = "4";
+
+                    // 방향성에 따른 화살표 표시 로직
+                    const dir = edge.direction || 'forward';
+                    const showEndMarker = (dir === 'forward' || dir === 'both') ? `url(#${marker})` : 'none';
+                    const showStartMarker = (dir === 'backward' || dir === 'both') ? `url(#${marker})` : 'none'; // orient="auto-start-reverse" 덕분에 같은 마커 사용 가능
+
+                    const displayText = edge.method === 'manual' ? (edge.label || '관계 입력') : methodNames[edge.method];
 
                     return (
                       <g 
@@ -1396,20 +1498,18 @@
                         onMouseLeave={() => setHoveredEdge(null)}
                         className={`cursor-pointer group transition-all duration-300 ${edgeOpacityClass}`}
                       >
-                        {/* 1. 마우스 인식용 투명한 두꺼운 뼈대(히트박스) */}
                         <path d={pathD} stroke="transparent" strokeWidth="20" fill="none" />
                         
-                        {/* 2. 실제 그려지는 부드러운 곡선 */}
                         <path 
                           d={pathD} 
                           stroke={strokeColor} 
                           strokeWidth={strokeW} 
                           fill="none"
-                          markerEnd={`url(#${marker})`} 
+                          markerEnd={showEndMarker}
+                          markerStart={showStartMarker}
                           className="transition-all duration-300"
                         />
                         
-                        {/* 3. 텍스트 배지 (평상시 숨김, 호버/선택 시에만 등장) */}
                         <g className={`transition-opacity duration-300 ${isActive ? "opacity-100" : "opacity-0"}`}>
                           <rect x={midX - 50} y={midY - 12} width="100" height="24" rx="12" fill="white" stroke={strokeColor} strokeWidth={isSelected ? "2" : "1.5"} filter="url(#soft-shadow)" />
                           <text x={midX} y={midY + 4} textAnchor="middle" fontSize="10" fill={isSelected ? '#1d4ed8' : '#334155'} fontWeight="bold" pointerEvents="none">
@@ -1432,7 +1532,6 @@
                       strokeWidth: isSelected || isSource ? "3" : "1"
                     };
 
-                    // 노드 및 아이콘 크기 약 25% 축소 적용
                     if (node.type === 'Task') {
                       symbol = <rect x="-20" y="-20" width="40" height="40" rx="10" fill={node.color} {...strokeStyle} filter="url(#soft-shadow)" className="transition-all" />;
                     } else if (['Law', 'Regulation', 'Guideline', 'Deliverable'].includes(node.type)) {
@@ -1449,10 +1548,12 @@
                     }
 
                     const status = node.meta?.상태 || '미진행';
+                    // 컬러 기본 폴백 (수동 입력 시)
                     let badgeColor = '#94a3b8'; 
-                    if (status === '진행중') badgeColor = '#3b82f6'; 
-                    else if (status === '완료') badgeColor = '#10b981'; 
-                    else if (status === '보류') badgeColor = '#f59e0b'; 
+                    if (status === '진행중') badgeColor = '#f97316'; 
+                    else if (status === '완료') badgeColor = '#3b82f6'; 
+                    else if (status === '보류') badgeColor = '#ef4444'; 
+                    else if (!['미진행','진행중','보류','완료'].includes(status)) badgeColor = '#64748b'; // 사용자 입력 커스텀 상태 색상
 
                     return (
                       <g 
@@ -1468,7 +1569,9 @@
                         
                         <g transform="translate(10, -28)" filter="url(#soft-shadow)">
                           <rect width="32" height="14" rx="7" fill={badgeColor} stroke="white" strokeWidth="1" />
-                          <text x="16" y="10" fontSize="8" fill="white" textAnchor="middle" fontWeight="bold">{status}</text>
+                          <text x="16" y="10" fontSize="8" fill="white" textAnchor="middle" fontWeight="bold">
+                             {status.length > 3 ? status.substring(0,3)+'..' : status}
+                          </text>
                         </g>
 
                         <text y="4" textAnchor="middle" fontSize="12" fontWeight="900" fill="rgba(255,255,255,0.95)" pointerEvents="none">
@@ -1543,16 +1646,21 @@
                       
                       <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-inner">
                         <label className="text-xs font-bold text-slate-700 block mb-1.5">진행 상태 (Status)</label>
-                        <select
-                          value={selectedNodeObj.meta?.상태 || '미진행'}
-                          onChange={(e) => updateNodeMeta(selectedNodeObj.id, '상태', e.target.value)}
-                          className="w-full text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 cursor-pointer transition"
-                        >
-                          <option value="미진행">미진행 (Not Started)</option>
-                          <option value="진행중">진행중 (In Progress)</option>
-                          <option value="보류">보류 (Pending)</option>
-                          <option value="완료">완료 (Completed)</option>
-                        </select>
+                        {/* 상태: 수동입력 가능한 콤보박스로 변경됨 (위 renderMetaInput 함수가 아닌 자체 렌더) */}
+                        <div className="relative">
+                           <input 
+                             type="text" list="dl-main-status"
+                             className="w-full text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 transition" 
+                             value={selectedNodeObj.meta?.상태 || ''} onChange={(e) => updateNodeMeta(selectedNodeObj.id, '상태', e.target.value)} 
+                             placeholder="상태를 선택하거나 자유롭게 적어주세요" 
+                           />
+                           <datalist id="dl-main-status">
+                             <option value="미진행" />
+                             <option value="진행중" />
+                             <option value="보류" />
+                             <option value="완료" />
+                           </datalist>
+                        </div>
                       </div>
                     </div>
                     
@@ -1562,7 +1670,7 @@
                         {Object.keys(defaultMeta[selectedNodeObj.type]).filter(k => k !== '상태').map((key) => (
                           <div key={key} className="flex flex-col space-y-1.5 group">
                             <label className="text-xs font-bold text-slate-500 group-focus-within:text-blue-600 transition">{key}</label>
-                            {renderMetaInput(key, selectedNodeObj.meta[key] || '', selectedNodeObj.id)}
+                            {renderMetaInput(key, selectedNodeObj.meta[key], selectedNodeObj.id)}
                           </div>
                         ))}
                       </div>
@@ -1667,32 +1775,51 @@
                   </div>
                 ) : selectionType === 'edge' && selectedEdgeObj ? (
                   <div className="flex-1 flex flex-col bg-white">
-                    <div className="p-6 border-b border-slate-200 bg-slate-50 shrink-0">
-                      <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider mb-3 block">관계선(Link) 도출 방식 지정</span>
+                    {/* ★ 신규: 현재 연결선 정보 헤더 (직관적 표시) ★ */}
+                    <div className="p-5 border-b border-slate-200 bg-slate-100 shrink-0">
+                      <span className="text-xs font-extrabold text-indigo-600 uppercase tracking-wider mb-3 block">연결선 설정 (Link)</span>
                       
-                      <select
-                        value={selectedEdgeObj.method || 'manual'} onChange={(e) => updateEdge(selectedEdgeObj.id, 'method', e.target.value)}
-                        className="w-full text-base font-extrabold text-slate-800 bg-white border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none px-4 py-3 cursor-pointer shadow-sm transition"
-                      >
-                        <option value="manual">✋ 수동 입력 (No Rule)</option>
-                        <option disabled>────────── [ 데이터/AI 도출 ] ──────────</option>
-                        <option value="semantic">🧠 시맨틱 추론 (Semantic AI)</option>
-                        <option value="keyword">🔑 키워드 매칭 (Keyword Match)</option>
-                        <option value="cooccurrence">📄 문서 동시 출현 (Co-occurrence)</option>
-                        <option disabled>────────── [ 논리/구조 도출 ] ──────────</option>
-                        <option value="rule">⚡ 사전 룰 엔진 매핑 (Rule Engine)</option>
-                        <option value="inheritance">🕸️ 상위 속성 상속 (Inheritance)</option>
-                        <option value="transitive">🔗 네트워크 연쇄 추론 (Transitive)</option>
-                        <option disabled>────────── [ 행동/로그 도출 ] ──────────</option>
-                        <option value="log">📈 시스템 로그 분석 (Log Analytics)</option>
-                      </select>
+                      <div className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-slate-300 shadow-sm mb-4">
+                        <div className="flex flex-col flex-1 min-w-0">
+                           <span className="text-[10px] font-bold text-slate-400 truncate">{typeLabels[edgeSourceNode?.type]}</span>
+                           <span className="text-sm font-extrabold text-slate-800 truncate" title={edgeSourceNode?.label}>{edgeSourceNode?.label}</span>
+                        </div>
+                        
+                        <div className="px-3 text-slate-400 font-black">
+                           {selectedEdgeObj.direction === 'both' ? '⟷' : selectedEdgeObj.direction === 'none' ? '―' : '➔'}
+                        </div>
+                        
+                        <div className="flex flex-col flex-1 text-right min-w-0">
+                           <span className="text-[10px] font-bold text-slate-400 truncate">{typeLabels[edgeTargetNode?.type]}</span>
+                           <span className="text-sm font-extrabold text-slate-800 truncate" title={edgeTargetNode?.label}>{edgeTargetNode?.label}</span>
+                        </div>
+                      </div>
 
-                      <button 
-                        onClick={() => reverseEdgeDirection(selectedEdgeObj.id)} 
-                        className="mt-4 w-full bg-white border border-slate-300 hover:bg-slate-100 hover:border-slate-400 text-slate-700 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center transition shadow-sm"
-                      >
-                        <ArrowLeftRight size={16} className="mr-2 text-slate-500" /> 화살표 방향 반전 (Swap)
-                      </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={selectedEdgeObj.method || 'manual'} onChange={(e) => updateEdge(selectedEdgeObj.id, 'method', e.target.value)}
+                          className="w-full text-xs font-extrabold text-slate-700 bg-white border border-slate-300 rounded-lg outline-none px-2 py-2 cursor-pointer transition focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="manual">✋ 수동 입력 (No Rule)</option>
+                          <option value="semantic">🧠 시맨틱 추론</option>
+                          <option value="keyword">🔑 키워드 매칭</option>
+                          <option value="cooccurrence">📄 문서 동시 출현</option>
+                          <option value="rule">⚡ 사전 룰 엔진 매핑</option>
+                          <option value="inheritance">🕸️ 상위 속성 상속</option>
+                          <option value="transitive">🔗 네트워크 연쇄 추론</option>
+                          <option value="log">📈 시스템 로그 분석</option>
+                        </select>
+
+                        {/* ★ 신규: 양방향 설정 드롭다운 ★ */}
+                        <select
+                          value={selectedEdgeObj.direction || 'forward'} onChange={(e) => updateEdge(selectedEdgeObj.id, 'direction', e.target.value)}
+                          className="w-full text-xs font-extrabold text-slate-700 bg-white border border-slate-300 rounded-lg outline-none px-2 py-2 cursor-pointer transition focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="forward">A ➔ B (단방향)</option>
+                          <option value="both">A ⟷ B (양방향)</option>
+                          <option value="none">A ― B (방향없음)</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div className="p-6 flex-1 overflow-y-auto bg-white">
@@ -1701,7 +1828,7 @@
                           <label className="text-sm font-extrabold text-slate-800 mb-2 block">수동 관계 명칭 타이핑</label>
                           <input 
                             type="text" value={selectedEdgeObj.label || ''} onChange={(e) => updateEdge(selectedEdgeObj.id, 'label', e.target.value)}
-                            placeholder="관계 직접 입력 (예: 확인용, 참조함)"
+                            placeholder="관계 직접 입력 (예: 참조, 의존)"
                             className="w-full text-sm font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none p-3 shadow-sm transition"
                           />
                         </div>
