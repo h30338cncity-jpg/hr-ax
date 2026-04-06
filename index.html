@@ -853,6 +853,11 @@
             });
 
             laneNodes.sort((a, b) => {
+              // 과제(Task) 레인인 경우 가나다순(label 기준)으로 정렬
+              if (lane.id === 'l_tsk') {
+                return (a.label || '').localeCompare(b.label || '', 'ko-KR');
+              }
+              // 그 외 레인은 기존 연결 관계(Barycentric) 기준 정렬
               if (Math.abs(a.targetX - b.targetX) > 1) return a.targetX - b.targetX;
               return b.weight - a.weight;
             });
@@ -1427,6 +1432,7 @@
                       strokeWidth: isSelected || isSource ? "3" : "1"
                     };
 
+                    // 노드 및 아이콘 크기 약 25% 축소 적용
                     if (node.type === 'Task') {
                       symbol = <rect x="-20" y="-20" width="40" height="40" rx="10" fill={node.color} {...strokeStyle} filter="url(#soft-shadow)" className="transition-all" />;
                     } else if (['Law', 'Regulation', 'Guideline', 'Deliverable'].includes(node.type)) {
